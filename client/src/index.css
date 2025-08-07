@@ -1,0 +1,148 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: hsl(0, 0%, 100%);
+  --foreground: hsl(20, 14.3%, 4.1%);
+  --muted: hsl(60, 4.8%, 95.9%);
+  --muted-foreground: hsl(25, 5.3%, 44.7%);
+  --popover: hsl(0, 0%, 100%);
+  --popover-foreground: hsl(20, 14.3%, 4.1%);
+  --card: hsl(0, 0%, 100%);
+  --card-foreground: hsl(20, 14.3%, 4.1%);
+  --border: hsl(20, 5.9%, 90%);
+  --input: hsl(20, 5.9%, 90%);
+  --primary: hsl(122, 39%, 49%);
+  --primary-foreground: hsl(0, 0%, 100%);
+  --secondary: hsl(84, 43%, 59%);
+  --secondary-foreground: hsl(0, 0%, 100%);
+  --accent: hsl(84, 43%, 59%);
+  --accent-foreground: hsl(0, 0%, 100%);
+  --destructive: hsl(0, 84.2%, 60.2%);
+  --destructive-foreground: hsl(60, 9.1%, 97.8%);
+  --ring: hsl(122, 39%, 49%);
+  --radius: 0.75rem;
+  
+  /* Agricultural theme colors */
+  --agri-primary: hsl(122, 39%, 49%);
+  --agri-secondary: hsl(84, 43%, 59%);
+  --agri-dark: hsl(123, 46%, 31%);
+  --agri-light: hsl(123, 57%, 85%);
+  --agri-accent: hsl(36, 100%, 50%);
+}
+
+.dark {
+  --background: hsl(240, 10%, 3.9%);
+  --foreground: hsl(0, 0%, 98%);
+  --muted: hsl(240, 3.7%, 15.9%);
+  --muted-foreground: hsl(240, 5%, 64.9%);
+  --popover: hsl(240, 10%, 3.9%);
+  --popover-foreground: hsl(0, 0%, 98%);
+  --card: hsl(240, 10%, 3.9%);
+  --card-foreground: hsl(0, 0%, 98%);
+  --border: hsl(240, 3.7%, 15.9%);
+  --input: hsl(240, 3.7%, 15.9%);
+  --primary: hsl(122, 39%, 49%);
+  --primary-foreground: hsl(0, 0%, 100%);
+  --secondary: hsl(240, 3.7%, 15.9%);
+  --secondary-foreground: hsl(0, 0%, 98%);
+  --accent: hsl(240, 3.7%, 15.9%);
+  --accent-foreground: hsl(0, 0%, 98%);
+  --destructive: hsl(0, 62.8%, 30.6%);
+  --destructive-foreground: hsl(0, 0%, 98%);
+  --ring: hsl(240, 4.9%, 83.9%);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply font-sans antialiased bg-background text-foreground;
+  }
+}
+
+/* Agricultural theme utilities */
+.bg-agri-primary {
+  background-color: var(--agri-primary);
+}
+
+.bg-agri-secondary {
+  background-color: var(--agri-secondary);
+}
+
+.bg-agri-dark {
+  background-color: var(--agri-dark);
+}
+
+.bg-agri-light {
+  background-color: var(--agri-light);
+}
+
+.bg-agri-accent {
+  background-color: var(--agri-accent);
+}
+
+.text-agri-primary {
+  color: var(--agri-primary);
+}
+
+.text-agri-secondary {
+  color: var(--agri-secondary);
+}
+
+.text-agri-dark {
+  color: var(--agri-dark);
+}
+
+.text-agri-light {
+  color: var(--agri-light);
+}
+
+.text-agri-accent {
+  color: var(--agri-accent);
+}
+
+.border-agri-primary {
+  border-color: var(--agri-primary);
+}
+
+.border-agri-secondary {
+  border-color: var(--agri-secondary);
+}
+
+.hover\:bg-agri-primary:hover {
+  background-color: var(--agri-primary);
+}
+
+.hover\:bg-agri-dark:hover {
+  background-color: var(--agri-dark);
+}
+
+.focus\:border-agri-primary:focus {
+  border-color: var(--agri-primary);
+}
+
+/* Large button styles for low digital literacy users */
+.btn-large {
+  @apply px-8 py-4 text-lg font-semibold rounded-xl transition-colors;
+}
+
+.btn-primary {
+  @apply bg-agri-primary text-white hover:bg-agri-dark;
+}
+
+.btn-secondary {
+  @apply bg-white text-agri-primary border-2 border-agri-primary hover:bg-agri-primary hover:text-white;
+}
+
+/* Form styles */
+.form-input {
+  @apply w-full px-4 py-4 border-2 border-gray-300 rounded-xl focus:border-agri-primary focus:outline-none text-lg;
+}
+
+.form-label {
+  @apply block text-lg font-semibold text-agri-dark mb-3;
+}
