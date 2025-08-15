@@ -12,6 +12,7 @@ import userRoutes from "./users";
 import profileRoutes from "./profiles";
 import adminRoutes from "./admin";
 import financialUserRoutes from "./financialUsers";
+import documentRoutes from "./documents";
 
 export function registerRoutes(app: Express): Server {
   // Middleware to verify JWT token
@@ -66,6 +67,7 @@ export function registerRoutes(app: Express): Server {
   app.use("/api/profiles", profileRoutes);
   app.use("/api/admin", adminRoutes);
   app.use("/api/financial-users", financialUserRoutes);
+  app.use("/api/documents", documentRoutes);
 
   // Add credit simulator as a public route
   app.post("/api/simulate-credit", async (req, res) => {

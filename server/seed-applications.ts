@@ -31,6 +31,13 @@ export async function seedApplications() {
         agricultureType: "Agricultura de cereais - milho híbrido",
         creditDeliveryMethod: "monthly",
         creditGuaranteeDeclaration: "Ofereço como garantia a hipoteca da propriedade agrícola de 8 hectares localizada na comuna do Kaculama, avaliada em AOA 1,200,000. Adicionalmente, disponibilizo o aval do Sr. António Manuel, comerciante na região.",
+        // Campos financeiros
+        monthlyIncome: "180000.00", // 180.000 AOA
+        expectedProjectIncome: "95000.00", // 95.000 AOA
+        monthlyExpenses: "120000.00", // 120.000 AOA
+        otherDebts: "25000.00", // 25.000 AOA
+        familyMembers: 5,
+        experienceYears: 8,
         status: "pending"
       },
       {
@@ -44,6 +51,13 @@ export async function seedApplications() {
         agricultureType: "Pecuária bovina - criação e reprodução",
         creditDeliveryMethod: "total",
         creditGuaranteeDeclaration: "Ofereço como garantia a hipoteca do terreno de 20 hectares com pastagens, localizado no município de Malanje, avaliado em AOA 4,000,000. Tenho também contrato de fornecimento com o frigorífico local como garantia adicional.",
+        // Campos financeiros
+        monthlyIncome: "320000.00", // 320.000 AOA
+        expectedProjectIncome: "150000.00", // 150.000 AOA
+        monthlyExpenses: "180000.00", // 180.000 AOA
+        otherDebts: "45000.00", // 45.000 AOA
+        familyMembers: 7,
+        experienceYears: 15,
         status: "under_review"
       },
       {
@@ -57,6 +71,13 @@ export async function seedApplications() {
         agricultureType: "Agricultura de tubérculos - mandioca",
         creditDeliveryMethod: "monthly",
         creditGuaranteeDeclaration: "Apresento como garantia o penhor de equipamentos agrícolas (trator e alfaias) avaliados em AOA 650,000, além do aval solidário da Cooperativa Agrícola de Malanje.",
+        // Campos financeiros
+        monthlyIncome: "125000.00", // 125.000 AOA
+        expectedProjectIncome: "65000.00", // 65.000 AOA
+        monthlyExpenses: "85000.00", // 85.000 AOA
+        otherDebts: "15000.00", // 15.000 AOA
+        familyMembers: 4,
+        experienceYears: 6,
         status: "approved"
       },
       {
@@ -70,6 +91,13 @@ export async function seedApplications() {
         agricultureType: "Avicultura - produção de ovos",
         creditDeliveryMethod: "total",
         creditGuaranteeDeclaration: "Ofereço como garantia a hipoteca da propriedade onde será construído o aviário, avaliada em AOA 1,100,000, e contrato de fornecimento de ovos com mercados locais.",
+        // Campos financeiros
+        monthlyIncome: "210000.00", // 210.000 AOA
+        expectedProjectIncome: "85000.00", // 85.000 AOA
+        monthlyExpenses: "140000.00", // 140.000 AOA
+        otherDebts: "30000.00", // 30.000 AOA
+        familyMembers: 6,
+        experienceYears: 10,
         status: "rejected"
       },
       {
@@ -83,6 +111,13 @@ export async function seedApplications() {
         agricultureType: "Horticultura - produtos frescos",
         creditDeliveryMethod: "total",
         creditGuaranteeDeclaration: "Apresento como garantia equipamentos de irrigação e ferramentas agrícolas avaliados em AOA 400,000, além do aval do presidente da associação de agricultores locais.",
+        // Campos financeiros
+        monthlyIncome: "95000.00", // 95.000 AOA
+        expectedProjectIncome: "45000.00", // 45.000 AOA
+        monthlyExpenses: "65000.00", // 65.000 AOA
+        otherDebts: "8000.00", // 8.000 AOA
+        familyMembers: 3,
+        experienceYears: 4,
         status: "pending"
       }
     ];

@@ -31,7 +31,7 @@ export class AuthController {
       });
 
       // Generate JWT token
-      const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '7d' });
+      const token = jwt.sign({ userId: user.id, userType: user.userType }, JWT_SECRET, { expiresIn: '7d' });
 
       res.status(201).json({
         user: {
@@ -79,7 +79,7 @@ export class AuthController {
       }
 
       // Generate JWT token
-      const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '7d' });
+      const token = jwt.sign({ userId: user.id, userType: user.userType }, JWT_SECRET, { expiresIn: '7d' });
 
       res.json({
         user: {

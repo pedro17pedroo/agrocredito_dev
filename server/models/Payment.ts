@@ -12,10 +12,30 @@ export class PaymentModel {
   }
 
   static async create(paymentData: InsertPayment): Promise<Payment> {
-    const [payment] = await db
+    // Generate a unique ID for the payment
+    const { randomUUID } = await import('crypto');
+    const paymentId = randomUUID();
+    
+    const paymentDataWithId = {
+      ...paymentData,
+      id: paymentId
+    };
+
+    await db
       .insert(payments)
-      .values(paymentData)
-      .returning();
+      .values(paymentDataWithId);
+
+    // Fetch the created payment using the generated ID
+    const [payment] = await db
+      .select()
+      .from(payments)
+      .where(eq(payments.id, paymentId))
+      .limit(1);
+
+    if (!payment) {
+      throw new Error('Falha ao criar pagamento');
+    }
+
     return payment;
   }
 }

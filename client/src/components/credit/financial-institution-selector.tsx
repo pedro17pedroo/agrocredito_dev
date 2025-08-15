@@ -68,7 +68,9 @@ export default function FinancialInstitutionSelector({
       (institutionPrograms as CreditProgram[]) : 
       (allPrograms as CreditProgram[]);
     
-    if (projectType && programs && programs.length > 0) {
+    // Se não há projectType selecionado ou é "other", mostrar todos os programas ativos
+    // Caso contrário, filtrar apenas os programas que suportam o tipo de projeto específico
+    if (projectType && projectType !== "other" && programs && programs.length > 0) {
       programs = programs.filter((program: CreditProgram) => 
         program.projectTypes.includes(projectType) || program.projectTypes.includes("other")
       );

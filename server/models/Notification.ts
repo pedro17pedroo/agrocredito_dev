@@ -12,10 +12,30 @@ export class NotificationModel {
   }
 
   static async create(notificationData: InsertNotification): Promise<Notification> {
-    const [notification] = await db
+    // Generate a unique ID for the notification
+    const { randomUUID } = await import('crypto');
+    const notificationId = randomUUID();
+    
+    const notificationDataWithId = {
+      ...notificationData,
+      id: notificationId
+    };
+
+    await db
       .insert(notifications)
-      .values(notificationData)
-      .returning();
+      .values(notificationDataWithId);
+
+    // Fetch the created notification using the generated ID
+    const [notification] = await db
+      .select()
+      .from(notifications)
+      .where(eq(notifications.id, notificationId))
+      .limit(1);
+
+    if (!notification) {
+      throw new Error('Falha ao criar notificação');
+    }
+
     return notification;
   }
 

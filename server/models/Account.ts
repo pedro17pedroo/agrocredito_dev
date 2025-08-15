@@ -32,10 +32,30 @@ export class AccountModel {
   }
 
   static async create(accountData: InsertAccount): Promise<Account> {
-    const [account] = await db
+    // Generate a unique ID for the account
+    const { randomUUID } = await import('crypto');
+    const accountId = randomUUID();
+    
+    const accountDataWithId = {
+      ...accountData,
+      id: accountId
+    };
+
+    await db
       .insert(accounts)
-      .values(accountData)
-      .returning();
+      .values(accountDataWithId);
+
+    // Fetch the created account using the generated ID
+    const [account] = await db
+      .select()
+      .from(accounts)
+      .where(eq(accounts.id, accountId))
+      .limit(1);
+
+    if (!account) {
+      throw new Error('Falha ao criar conta');
+    }
+
     return account;
   }
 

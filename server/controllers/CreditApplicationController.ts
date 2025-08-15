@@ -8,12 +8,35 @@ import { insertCreditApplicationSchema } from "@shared/schema";
 export class CreditApplicationController {
   static async create(req: any, res: Response) {
     try {
+      const { documentIds, ...applicationBody } = req.body;
+      
+      console.log('📝 Criando aplicação de crédito...');
+      console.log('📄 DocumentIds recebidos:', documentIds);
+      console.log('📋 Dados da aplicação:', applicationBody);
+      
       const applicationData = insertCreditApplicationSchema.parse({
-        ...req.body,
+        ...applicationBody,
         userId: req.user.id,
       });
 
       const application = await CreditApplicationModel.create(applicationData);
+      console.log('✅ Aplicação criada com ID:', application.id);
+
+      // Associate documents with the credit application if provided
+      if (documentIds && Array.isArray(documentIds) && documentIds.length > 0) {
+        console.log('🔗 Associando documentos à aplicação...');
+        const { DocumentModel } = await import("../models/Document");
+        
+        try {
+          const associations = await DocumentModel.associateWithCreditApplication(application.id, documentIds);
+          console.log('✅ Documentos associados com sucesso:', associations.length);
+        } catch (error) {
+          console.error(`❌ Erro ao associar documentos com aplicação ${application.id}:`, error);
+          // Log error but don't fail the application creation
+        }
+      } else {
+        console.log('⚠️ Nenhum documento fornecido para associação');
+      }
 
       // Create notification for admin/financial institutions
       await NotificationModel.create({
@@ -48,13 +71,39 @@ export class CreditApplicationController {
   static async getById(req: Request, res: Response) {
     try {
       const { id } = req.params;
-      const application = await CreditApplicationModel.findById(id);
+      const application = await CreditApplicationModel.findByIdWithUser(id);
       
       if (!application) {
+        console.log(`Application ${id} not found in database`);
         return res.status(404).json({ message: "Solicitação não encontrada" });
       }
 
-      res.json(application);
+      // Buscar documentos associados à aplicação
+      let documents = [];
+      try {
+        const { DocumentModel } = await import("../models/Document");
+        documents = await DocumentModel.findByCreditApplication(id);
+      } catch (error) {
+        console.error(`Error fetching documents for application ${id}:`, error);
+        // Continue sem documentos se houver erro
+      }
+
+      // Retornar aplicação com documentos
+      const applicationWithDocuments = {
+        ...application,
+        documents: documents.map(doc => ({
+          id: doc.id,
+          documentType: doc.documentType,
+          originalFileName: doc.originalFileName,
+          fileSize: doc.fileSize,
+          mimeType: doc.mimeType,
+          version: doc.version,
+          isRequired: doc.isRequired,
+          createdAt: doc.createdAt
+        }))
+      };
+
+      res.json(applicationWithDocuments);
     } catch (error) {
       console.error("Get application error:", error);
       res.status(500).json({ message: "Erro interno do servidor" });

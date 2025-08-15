@@ -19,7 +19,15 @@ export class CreditProgramController {
         .where(eq(creditPrograms.financialInstitutionId, userId))
         .orderBy(creditPrograms.createdAt);
 
-      res.json(programs);
+      // Parse JSON fields before sending response
+      const parsedPrograms = programs.map(program => ({
+        ...program,
+        projectTypes: typeof program.projectTypes === 'string' 
+          ? JSON.parse(program.projectTypes) 
+          : program.projectTypes
+      }));
+
+      res.json(parsedPrograms);
     } catch (error) {
       console.error("Error fetching credit programs:", error);
       res.status(500).json({ error: "Erro ao carregar programas de crédito" });
@@ -48,7 +56,15 @@ export class CreditProgramController {
         .where(eq(creditPrograms.isActive, true))
         .orderBy(creditPrograms.createdAt);
 
-      res.json(programs);
+      // Parse JSON fields before sending response
+      const parsedPrograms = programs.map(program => ({
+        ...program,
+        projectTypes: typeof program.projectTypes === 'string' 
+          ? JSON.parse(program.projectTypes) 
+          : program.projectTypes
+      }));
+
+      res.json(parsedPrograms);
     } catch (error) {
       console.error("Error fetching public credit programs:", error);
       res.status(500).json({ error: "Erro ao carregar programas de crédito" });
@@ -84,7 +100,15 @@ export class CreditProgramController {
         )
         .orderBy(creditPrograms.createdAt);
 
-      res.json(programs);
+      // Parse JSON fields before sending response
+      const parsedPrograms = programs.map(program => ({
+        ...program,
+        projectTypes: typeof program.projectTypes === 'string' 
+          ? JSON.parse(program.projectTypes) 
+          : program.projectTypes
+      }));
+
+      res.json(parsedPrograms);
     } catch (error) {
       console.error("Error fetching programs by institution:", error);
       res.status(500).json({ error: "Erro ao carregar programas de crédito" });
@@ -116,7 +140,15 @@ export class CreditProgramController {
         return res.status(404).json({ error: "Programa de crédito não encontrado" });
       }
 
-      res.json(program[0]);
+      // Parse JSON fields before sending response
+      const parsedProgram = {
+        ...program[0],
+        projectTypes: typeof program[0].projectTypes === 'string' 
+          ? JSON.parse(program[0].projectTypes) 
+          : program[0].projectTypes
+      };
+
+      res.json(parsedProgram);
     } catch (error) {
       console.error("Error fetching credit program:", error);
       res.status(500).json({ error: "Erro ao carregar programa de crédito" });
@@ -147,12 +179,35 @@ export class CreditProgramController {
 
       const programData: InsertCreditProgram = validationResult.data;
 
-      const [newProgram] = await db
-        .insert(creditPrograms)
-        .values(programData)
-        .returning();
+      // Generate a unique ID for the program
+      const { randomUUID } = await import('crypto');
+      const programId = randomUUID();
+      
+      const programDataWithId = {
+        ...programData,
+        id: programId
+      };
 
-      res.status(201).json(newProgram);
+      await db
+        .insert(creditPrograms)
+        .values(programDataWithId);
+
+      // Fetch the created program using the generated ID
+      const [newProgram] = await db
+        .select()
+        .from(creditPrograms)
+        .where(eq(creditPrograms.id, programId))
+        .limit(1);
+
+      // Parse JSON fields before sending response
+      const parsedProgram = {
+        ...newProgram,
+        projectTypes: typeof newProgram.projectTypes === 'string' 
+          ? JSON.parse(newProgram.projectTypes) 
+          : newProgram.projectTypes
+      };
+
+      res.status(201).json(parsedProgram);
     } catch (error) {
       console.error("Error creating credit program:", error);
       res.status(500).json({ error: "Erro ao criar programa de crédito" });
@@ -206,10 +261,33 @@ export class CreditProgramController {
             eq(creditPrograms.id, id),
             eq(creditPrograms.financialInstitutionId, userId)
           )
-        )
-        .returning();
+        );
 
-      res.json(updatedProgram);
+      // Fetch the updated program
+      const [updatedProgramData] = await db
+        .select()
+        .from(creditPrograms)
+        .where(
+          and(
+            eq(creditPrograms.id, id),
+            eq(creditPrograms.financialInstitutionId, userId)
+          )
+        )
+        .limit(1);
+
+      if (!updatedProgramData) {
+        return res.status(404).json({ error: "Programa de crédito não encontrado" });
+      }
+
+      // Parse JSON fields before sending response
+      const parsedProgram = {
+        ...updatedProgramData,
+        projectTypes: typeof updatedProgramData.projectTypes === 'string' 
+          ? JSON.parse(updatedProgramData.projectTypes) 
+          : updatedProgramData.projectTypes
+      };
+
+      res.json(parsedProgram);
     } catch (error) {
       console.error("Error updating credit program:", error);
       res.status(500).json({ error: "Erro ao atualizar programa de crédito" });
@@ -295,10 +373,33 @@ export class CreditProgramController {
             eq(creditPrograms.id, id),
             eq(creditPrograms.financialInstitutionId, userId)
           )
-        )
-        .returning();
+        );
 
-      res.json(updatedProgram);
+      // Fetch the updated program
+      const [toggledProgramData] = await db
+        .select()
+        .from(creditPrograms)
+        .where(
+          and(
+            eq(creditPrograms.id, id),
+            eq(creditPrograms.financialInstitutionId, userId)
+          )
+        )
+        .limit(1);
+
+      if (!toggledProgramData) {
+        return res.status(404).json({ error: "Programa de crédito não encontrado" });
+      }
+
+      // Parse JSON fields before sending response
+      const parsedProgram = {
+        ...toggledProgramData,
+        projectTypes: typeof toggledProgramData.projectTypes === 'string' 
+          ? JSON.parse(toggledProgramData.projectTypes) 
+          : toggledProgramData.projectTypes
+      };
+
+      res.json(parsedProgram);
     } catch (error) {
       console.error("Error toggling program status:", error);
       res.status(500).json({ error: "Erro ao alterar estado do programa" });

@@ -4,21 +4,97 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, Calendar, DollarSign, FileText, User } from "lucide-react";
+import { ArrowLeft, Calendar, DollarSign, FileText, User, Paperclip, Download, Eye } from "lucide-react";
 import { formatKwanza, getProjectTypeLabel, getStatusLabel } from "@/lib/angola-utils";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import type { CreditApplication } from "@shared/schema";
+
+// Tipo estendido para incluir documentos
+type CreditApplicationWithDocuments = CreditApplication & {
+  documents?: Array<{
+    id: string;
+    documentType: string;
+    originalFileName: string;
+    fileSize: number;
+    mimeType: string;
+    version: number;
+    isRequired: boolean;
+    createdAt: string;
+  }>;
+};
+
+// Função para obter o rótulo do tipo de documento
+function getDocumentTypeLabel(documentType: string): string {
+  const labels: Record<string, string> = {
+    bilhete_identidade: "Bilhete de Identidade",
+    declaracao_soba: "Declaração do Soba",
+    declaracao_administracao_municipal: "Declaração da Administração Municipal",
+    comprovativo_actividade_agricola: "Comprovativo de Atividade Agrícola",
+    atestado_residencia: "Atestado de Residência",
+    outros: "Outros"
+  };
+  return labels[documentType] || documentType;
+}
+
+// Função para formatar o tamanho do arquivo
+function formatFileSize(bytes: number): string {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+// Função para download de documentos
+function downloadDocument(documentId: string, fileName: string) {
+  const token = localStorage.getItem('auth_token');
+  fetch(`/api/documents/download/${documentId}`, {
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  })
+  .then(response => response.blob())
+  .then(blob => {
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+  })
+  .catch(error => {
+    console.error('Erro ao fazer download:', error);
+  });
+}
+
+// Função para visualizar documentos
+function viewDocument(documentId: string, fileName: string) {
+  try {
+    const token = localStorage.getItem('auth_token');
+    // Abre diretamente o endpoint de visualização numa nova aba
+    const viewUrl = `/api/documents/view/${documentId}?token=${encodeURIComponent(token || '')}`;
+    window.open(viewUrl, '_blank');
+  } catch (error) {
+    console.error('Erro ao visualizar documento:', error);
+  }
+}
 
 export default function ApplicationDetails() {
   const params = useParams();
   const [, setLocation] = useLocation();
   const applicationId = params.id;
 
-  const { data: application, isLoading } = useQuery<CreditApplication>({
+  const { data: application, isLoading } = useQuery<CreditApplicationWithDocuments>({
     queryKey: ['/api/credit-applications', applicationId],
     enabled: !!applicationId,
   });
+
+  // Debug: verificar se os documentos estão chegando
+  console.log('Application data:', application);
+  console.log('Documents:', application?.documents);
 
   if (isLoading) {
     return (
@@ -113,21 +189,147 @@ export default function ApplicationDetails() {
                   Informações Financeiras
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <label className="text-sm font-medium text-gray-600">Montante Solicitado</label>
-                  <p className="text-2xl font-bold text-agri-primary">{formatKwanza(application.amount)}</p>
+              <CardContent className="space-y-6">
+                {/* Informações do Crédito */}
+                <div className="grid md:grid-cols-3 gap-4">
+                  <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                    <label className="text-sm font-medium text-green-700">Montante Solicitado</label>
+                    <p className="text-2xl font-bold text-green-800 mt-1">{formatKwanza(application.amount)}</p>
+                  </div>
+                  
+                  <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                    <label className="text-sm font-medium text-blue-700">Prazo</label>
+                    <p className="text-2xl font-bold text-blue-800 mt-1">{application.term} meses</p>
+                  </div>
+                  
+                  {application.interestRate && (
+                    <div className="bg-orange-50 p-4 rounded-lg border border-orange-200">
+                      <label className="text-sm font-medium text-orange-700">Taxa de Juro</label>
+                      <p className="text-2xl font-bold text-orange-800 mt-1">{application.interestRate}% anual</p>
+                    </div>
+                  )}
                 </div>
-                
+
+                {/* Informações Financeiras do Solicitante */}
                 <div>
-                  <label className="text-sm font-medium text-gray-600">Prazo</label>
-                  <p className="text-lg">{application.term} meses</p>
+                  <h4 className="text-lg font-semibold text-gray-800 mb-4">Situação Financeira do Solicitante</h4>
+                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {(application as any).monthlyIncome && (
+                      <div className="bg-gray-50 p-4 rounded-lg border">
+                        <label className="text-sm font-medium text-gray-600">Rendimento Mensal Atual</label>
+                        <p className="text-lg font-semibold text-gray-800 mt-1">
+                          {formatKwanza(parseFloat((application as any).monthlyIncome))}
+                        </p>
+                      </div>
+                    )}
+                    
+                    {(application as any).expectedProjectIncome && (
+                      <div className="bg-gray-50 p-4 rounded-lg border">
+                        <label className="text-sm font-medium text-gray-600">Rendimento Esperado do Projeto</label>
+                        <p className="text-lg font-semibold text-gray-800 mt-1">
+                          {formatKwanza(parseFloat((application as any).expectedProjectIncome))}
+                        </p>
+                      </div>
+                    )}
+                    
+                    {(application as any).monthlyExpenses && (
+                      <div className="bg-gray-50 p-4 rounded-lg border">
+                        <label className="text-sm font-medium text-gray-600">Despesas Mensais</label>
+                        <p className="text-lg font-semibold text-gray-800 mt-1">
+                          {formatKwanza(parseFloat((application as any).monthlyExpenses))}
+                        </p>
+                      </div>
+                    )}
+                    
+                    {(application as any).otherDebts && parseFloat((application as any).otherDebts) > 0 && (
+                      <div className="bg-gray-50 p-4 rounded-lg border">
+                        <label className="text-sm font-medium text-gray-600">Outras Dívidas Mensais</label>
+                        <p className="text-lg font-semibold text-gray-800 mt-1">
+                          {formatKwanza(parseFloat((application as any).otherDebts))}
+                        </p>
+                      </div>
+                    )}
+                    
+                    {(application as any).familyMembers && (
+                      <div className="bg-gray-50 p-4 rounded-lg border">
+                        <label className="text-sm font-medium text-gray-600">Membros da Família</label>
+                        <p className="text-lg font-semibold text-gray-800 mt-1">
+                          {(application as any).familyMembers} pessoas
+                        </p>
+                      </div>
+                    )}
+                    
+                    {(application as any).experienceYears !== undefined && (
+                      <div className="bg-gray-50 p-4 rounded-lg border">
+                        <label className="text-sm font-medium text-gray-600">Experiência na Agricultura</label>
+                        <p className="text-lg font-semibold text-gray-800 mt-1">
+                          {(application as any).experienceYears} anos
+                        </p>
+                      </div>
+                    )}
+                    
+                    {(application as any).productivity && (
+                      <div className="bg-gray-50 p-4 rounded-lg border">
+                        <label className="text-sm font-medium text-gray-600">Nível de Produtividade</label>
+                        <p className="text-lg font-semibold text-gray-800 mt-1">
+                          {(() => {
+                            const productivity = (application as any).productivity;
+                            if (productivity === 'small') return 'Pequeno Produtor';
+                            if (productivity === 'medium') return 'Médio Produtor';
+                            if (productivity === 'large') return 'Grande Produtor';
+                            return productivity || 'Não informado';
+                          })()}
+                        </p>
+                      </div>
+                    )}
+                    
+                    {(application as any).creditDeliveryMethod && (
+                      <div className="bg-gray-50 p-4 rounded-lg border">
+                        <label className="text-sm font-medium text-gray-600">Método de Entrega do Crédito</label>
+                        <p className="text-lg font-semibold text-gray-800 mt-1">
+                          {(() => {
+                            const method = (application as any).creditDeliveryMethod;
+                            if (method === 'total') return 'Entrega Total';
+                            if (method === 'monthly') return 'Por Prestação Mensal';
+                            return method || 'Não informado';
+                          })()}
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 </div>
-                
-                {application.interestRate && (
+
+                {/* Análise de Viabilidade */}
+                {(application as any).monthlyIncome && (application as any).expectedProjectIncome && (application as any).monthlyExpenses && (
                   <div>
-                    <label className="text-sm font-medium text-gray-600">Taxa de Juro</label>
-                    <p className="text-lg">{application.interestRate}% anual</p>
+                    <h4 className="text-lg font-semibold text-gray-800 mb-4">Análise de Viabilidade</h4>
+                    <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                      <div className="grid md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="text-sm font-medium text-blue-700">Rendimento Total Esperado</label>
+                          <p className="text-lg font-bold text-blue-800 mt-1">
+                            {formatKwanza(
+                              parseFloat((application as any).monthlyIncome) + 
+                              parseFloat((application as any).expectedProjectIncome)
+                            )}
+                          </p>
+                          <p className="text-xs text-blue-600 mt-1">Rendimento atual + projeto</p>
+                        </div>
+                        
+                        <div>
+                          <label className="text-sm font-medium text-blue-700">Rendimento Líquido Estimado</label>
+                          <p className="text-lg font-bold text-blue-800 mt-1">
+                            {formatKwanza(
+                              parseFloat((application as any).monthlyIncome) + 
+                              parseFloat((application as any).expectedProjectIncome) - 
+                              parseFloat((application as any).monthlyExpenses) - 
+                              (parseFloat((application as any).otherDebts || '0'))
+                            )}
+                          </p>
+                          <p className="text-xs text-blue-600 mt-1">Após despesas e dívidas</p>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 )}
               </CardContent>
@@ -178,8 +380,74 @@ export default function ApplicationDetails() {
               </CardContent>
             </Card>
 
+            {/* Documents Section */}
+            <Card className="lg:col-span-2">
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Paperclip className="w-5 h-5 mr-2 text-agri-primary" />
+                  Documentos Anexados
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {application.documents && application.documents.length > 0 ? (
+                  <div className="space-y-3">
+                    {application.documents.map((doc) => (
+                      <div key={doc.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">
+                        <div className="flex items-center space-x-3">
+                          <FileText className="w-5 h-5 text-agri-primary" />
+                          <div>
+                            <p className="font-medium text-gray-900">{doc.originalFileName}</p>
+                            <div className="flex items-center space-x-4 text-sm text-gray-600">
+                              <span>Tipo: {getDocumentTypeLabel(doc.documentType)}</span>
+                              <span>Tamanho: {formatFileSize(doc.fileSize)}</span>
+                              <span>Versão: {doc.version}</span>
+                              {doc.isRequired && (
+                                <Badge variant="secondary" className="text-xs">
+                                  Obrigatório
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="text-xs text-gray-500">
+                              Enviado em {format(new Date(doc.createdAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => viewDocument(doc.id, doc.originalFileName)}
+                            className="flex items-center space-x-2"
+                            title="Visualizar"
+                          >
+                            <Eye className="w-4 h-4" />
+                            <span>Ver</span>
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => downloadDocument(doc.id, doc.originalFileName)}
+                            className="flex items-center space-x-2"
+                            title="Download"
+                          >
+                            <Download className="w-4 h-4" />
+                            <span>Baixar</span>
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <Paperclip className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                    <p className="text-gray-600">Nenhum documento foi anexado a esta solicitação.</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
             {/* Timeline / Next Steps */}
-            <Card>
+            <Card className="lg:col-span-2">
               <CardHeader>
                 <CardTitle className="flex items-center">
                   <User className="w-5 h-5 mr-2 text-agri-primary" />

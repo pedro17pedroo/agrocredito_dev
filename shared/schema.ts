@@ -87,6 +87,14 @@ export const creditApplications = mysqlTable("credit_applications", {
   creditDeliveryMethod: varchar("credit_delivery_method", { length: 50 }).notNull(), // Entrega Total/Por Prestação Mensal
   creditGuaranteeDeclaration: text("credit_guarantee_declaration").notNull(), // Declaração da garantia
   
+  // Financial information
+  monthlyIncome: decimal("monthly_income", { precision: 15, scale: 2 }).default("0").notNull(), // Rendimento mensal atual em AOA
+  expectedProjectIncome: decimal("expected_project_income", { precision: 15, scale: 2 }).default("0").notNull(), // Rendimento mensal esperado do projeto em AOA
+  monthlyExpenses: decimal("monthly_expenses", { precision: 15, scale: 2 }).default("0").notNull(), // Despesas mensais em AOA
+  otherDebts: decimal("other_debts", { precision: 15, scale: 2 }).default("0"), // Outras dívidas mensais em AOA
+  familyMembers: int("family_members").default(1).notNull(), // Número de membros da família
+  experienceYears: int("experience_years").default(0).notNull(), // Anos de experiência na agricultura
+  
   interestRate: decimal("interest_rate", { precision: 5, scale: 2 }), // percentage
   status: mysqlEnum("status", ["pending", "under_review", "approved", "rejected"]).default("pending"),
   rejectionReason: text("rejection_reason"),
@@ -136,6 +144,39 @@ export const notifications = mysqlTable("notifications", {
   relatedId: varchar("related_id", { length: 36 }),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Tabela para gestão de documentos dos usuários
+export const documents = mysqlTable("documents", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`(UUID())`),
+  userId: varchar("user_id", { length: 36 }).notNull().references(() => users.id),
+  documentType: mysqlEnum("document_type", [
+    "bilhete_identidade",
+    "declaracao_soba", 
+    "declaracao_administracao_municipal",
+    "comprovativo_actividade_agricola",
+    "atestado_residencia",
+    "outros"
+  ]).notNull(),
+  fileName: varchar("file_name", { length: 255 }).notNull(),
+  originalFileName: varchar("original_file_name", { length: 255 }).notNull(),
+  filePath: varchar("file_path", { length: 500 }).notNull(),
+  fileSize: int("file_size").notNull(), // tamanho em bytes
+  mimeType: varchar("mime_type", { length: 100 }).notNull(),
+  version: int("version").default(1).notNull(), // versão do documento
+  isActive: boolean("is_active").default(true).notNull(), // documento ativo (última versão)
+  replacedById: varchar("replaced_by_id", { length: 36 }), // referência ao documento que substituiu este
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Tabela de relacionamento entre aplicações de crédito e documentos
+export const creditApplicationDocuments = mysqlTable("credit_app_docs", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`(UUID())`),
+  applicationId: varchar("application_id", { length: 36 }).notNull().references(() => creditApplications.id, { onDelete: 'cascade' }),
+  documentId: varchar("document_id", { length: 36 }).notNull().references(() => documents.id, { onDelete: 'cascade' }),
+  isRequired: boolean("is_required").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 // Insert schemas
@@ -194,6 +235,17 @@ export const insertProfilePermissionSchema = createInsertSchema(profilePermissio
   createdAt: true,
 });
 
+export const insertDocumentSchema = createInsertSchema(documents).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertCreditApplicationDocumentSchema = createInsertSchema(creditApplicationDocuments).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -221,3 +273,9 @@ export type InsertProfilePermission = z.infer<typeof insertProfilePermissionSche
 
 export type CreditProgram = typeof creditPrograms.$inferSelect;
 export type InsertCreditProgram = z.infer<typeof insertCreditProgramSchema>;
+
+export type Document = typeof documents.$inferSelect;
+export type InsertDocument = z.infer<typeof insertDocumentSchema>;
+
+export type CreditApplicationDocument = typeof creditApplicationDocuments.$inferSelect;
+export type InsertCreditApplicationDocument = z.infer<typeof insertCreditApplicationDocumentSchema>;

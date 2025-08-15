@@ -11,6 +11,7 @@ import AdminDashboard from "@/pages/admin-dashboard";
 import FinancialInstitutionDashboard from "@/pages/financial-institution-dashboard";
 import CreditApplication from "@/pages/credit-application";
 import ApplicationDetails from "@/pages/application-details";
+import FinancialApplicationDetails from "@/pages/financial-application-details";
 import Simulator from "@/pages/simulator";
 import Reports from "@/pages/reports";
 import ProfileManagement from "@/pages/profile-management";
@@ -45,6 +46,7 @@ function Router() {
       <Route path="/admin" component={AdminDashboard} />
       <Route path="/admin-dashboard" component={AdminDashboard} />
       <Route path="/financial-dashboard" component={FinancialInstitutionDashboard} />
+      <Route path="/financial-application/:id" component={FinancialApplicationDetails} />
       
       {/* Root route always shows landing page */}
       <Route path="/" component={Landing} />

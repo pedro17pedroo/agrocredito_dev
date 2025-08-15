@@ -22,6 +22,7 @@ router.use(checkAdminAccess);
 
 // Application management routes
 router.get("/credit-applications", CreditApplicationController.getForFinancialInstitution);
+router.get("/credit-applications/:id", CreditApplicationController.getById);
 router.patch("/credit-applications/:id/status", CreditApplicationController.updateStatus);
 
 // Account management routes

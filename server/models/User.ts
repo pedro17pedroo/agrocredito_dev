@@ -30,28 +30,62 @@ export class UserModel {
   }
 
   static async create(userData: InsertUser): Promise<User> {
-    const [user] = await db
+    // Generate a unique ID for the user
+    const { randomUUID } = await import('crypto');
+    const userId = randomUUID();
+    
+    const userDataWithId = {
+      ...userData,
+      id: userId
+    };
+
+    await db
       .insert(users)
-      .values(userData)
-      .returning();
+      .values(userDataWithId);
+
+    // Fetch the created user using the generated ID
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+
+    if (!user) {
+      throw new Error('Falha ao criar usuário');
+    }
+
     return user;
   }
 
   static async update(id: string, userData: Partial<InsertUser>): Promise<User | undefined> {
-    const [user] = await db
+    await db
       .update(users)
       .set({ ...userData, updatedAt: new Date() })
+      .where(eq(users.id, id));
+
+    // Fetch the updated user
+    const [user] = await db
+      .select()
+      .from(users)
       .where(eq(users.id, id))
-      .returning();
+      .limit(1);
+
     return user;
   }
 
   static async assignProfile(userId: string, profileId: string): Promise<User | undefined> {
-    const [user] = await db
+    await db
       .update(users)
       .set({ profileId, updatedAt: new Date() })
+      .where(eq(users.id, userId));
+
+    // Fetch the updated user
+    const [user] = await db
+      .select()
+      .from(users)
       .where(eq(users.id, userId))
-      .returning();
+      .limit(1);
+
     return user;
   }
 

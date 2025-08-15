@@ -31,10 +31,30 @@ export class ProfileModel {
   }
 
   static async create(profileData: InsertProfile): Promise<Profile> {
-    const [profile] = await db
+    // Generate a unique ID for the profile
+    const { randomUUID } = await import('crypto');
+    const profileId = randomUUID();
+    
+    const profileDataWithId = {
+      ...profileData,
+      id: profileId
+    };
+
+    await db
       .insert(profiles)
-      .values(profileData)
-      .returning();
+      .values(profileDataWithId);
+
+    // Fetch the created profile using the generated ID
+    const [profile] = await db
+      .select()
+      .from(profiles)
+      .where(eq(profiles.id, profileId))
+      .limit(1);
+
+    if (!profile) {
+      throw new Error('Falha ao criar perfil');
+    }
+
     return profile;
   }
 
@@ -114,10 +134,30 @@ export class PermissionModel {
   }
 
   static async create(permissionData: InsertPermission): Promise<Permission> {
-    const [permission] = await db
+    // Generate a unique ID for the permission
+    const { randomUUID } = await import('crypto');
+    const permissionId = randomUUID();
+    
+    const permissionDataWithId = {
+      ...permissionData,
+      id: permissionId
+    };
+
+    await db
       .insert(permissions)
-      .values(permissionData)
-      .returning();
+      .values(permissionDataWithId);
+
+    // Fetch the created permission using the generated ID
+    const [permission] = await db
+      .select()
+      .from(permissions)
+      .where(eq(permissions.id, permissionId))
+      .limit(1);
+
+    if (!permission) {
+      throw new Error('Falha ao criar permissão');
+    }
+
     return permission;
   }
 }

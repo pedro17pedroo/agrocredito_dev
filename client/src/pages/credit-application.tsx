@@ -16,7 +16,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { formatKwanza, parseKwanza } from "@/lib/angola-utils";
 import { useAuth } from "@/hooks/use-auth";
 import FinancialInstitutionSelector from "@/components/credit/financial-institution-selector";
-import DocumentUpload from "@/components/credit/document-upload";
+import DocumentManager from "@/components/DocumentManager";
 
 const applicationSchema = z.object({
   projectName: z.string().min(3, "Nome do projeto deve ter pelo menos 3 caracteres"),
@@ -24,7 +24,7 @@ const applicationSchema = z.object({
   description: z.string().min(10, "Descrição deve ter pelo menos 10 caracteres"),
   amount: z.string().min(1, "Montante é obrigatório"),
   term: z.string().min(1, "Prazo é obrigatório"),
-  // New fields
+  // Project details
   productivity: z.enum(["small", "medium", "large"], { 
     required_error: "Seleccione o nível de produtividade" 
   }),
@@ -33,6 +33,13 @@ const applicationSchema = z.object({
     required_error: "Seleccione a forma de disponibilidade do crédito"
   }),
   creditGuaranteeDeclaration: z.string().min(20, "Declaração da garantia deve ter pelo menos 20 caracteres"),
+  // Financial information
+  monthlyIncome: z.string().min(1, "Rendimento mensal atual é obrigatório"),
+  expectedProjectIncome: z.string().min(1, "Rendimento esperado do projeto é obrigatório"),
+  monthlyExpenses: z.string().min(1, "Despesas mensais são obrigatórias"),
+  otherDebts: z.string().optional(),
+  familyMembers: z.string().min(1, "Número de membros da família é obrigatório"),
+  experienceYears: z.string().min(1, "Anos de experiência são obrigatórios"),
 });
 
 type ApplicationForm = z.infer<typeof applicationSchema>;
@@ -63,8 +70,9 @@ export default function CreditApplication() {
   const [selectedProgram, setSelectedProgram] = useState<string>("");
   const [selectedProgramData, setSelectedProgramData] = useState<CreditProgram | undefined>();
   
-  // Document uploads
-  const [documents, setDocuments] = useState<{ [key: string]: File | null }>({});
+  // Document management
+  const [selectedDocuments, setSelectedDocuments] = useState<string[]>([]);
+  const [availableDocuments, setAvailableDocuments] = useState<any[]>([]);
 
   const form = useForm<ApplicationForm>({
     resolver: zodResolver(applicationSchema),
@@ -83,30 +91,36 @@ export default function CreditApplication() {
 
   const createApplication = useMutation({
     mutationFn: async (data: ApplicationForm) => {
-      // Validate required documents
-      if (user && ['farmer', 'company', 'cooperative'].includes(user.userType)) {
-        const userType = user.userType as 'farmer' | 'company' | 'cooperative';
-        const requiredDocs = getRequiredDocuments(userType).filter(doc => doc.required);
-        const missingDocs = requiredDocs.filter(doc => !documents[doc.id]);
-        
-        if (missingDocs.length > 0) {
-          throw new Error(`Documentos obrigatórios em falta: ${missingDocs.map(d => d.name).join(', ')}`);
-        }
+      // Validate that at least some documents are selected
+      if (selectedDocuments.length === 0) {
+        throw new Error('Selecione pelo menos um documento para a aplicação');
       }
 
-      // For now, send JSON data (file upload will be handled separately)
+      // Create the credit application
       const payload = {
         projectName: data.projectName,
         projectType: data.projectType,
         description: data.description,
         amount: parseKwanza(data.amount).toString(),
-        term: Number(data.term), // Ensure term is a number
+        term: Number(data.term),
         productivity: data.productivity,
         agricultureType: data.agricultureType,
         creditDeliveryMethod: data.creditDeliveryMethod,
         creditGuaranteeDeclaration: data.creditGuaranteeDeclaration,
+        // Financial information
+        monthlyIncome: parseKwanza(data.monthlyIncome).toString(),
+        expectedProjectIncome: parseKwanza(data.expectedProjectIncome).toString(),
+        monthlyExpenses: parseKwanza(data.monthlyExpenses).toString(),
+        otherDebts: data.otherDebts ? parseKwanza(data.otherDebts).toString() : '0',
+        familyMembers: Number(data.familyMembers),
+        experienceYears: Number(data.experienceYears),
+        documentIds: selectedDocuments, // Send selected document IDs
         ...(selectedProgram && { creditProgramId: selectedProgram }),
       };
+      
+      // Temporary debug logs
+      console.log('🔍 Frontend - Selected Documents:', selectedDocuments);
+      console.log('🔍 Frontend - Payload being sent:', payload);
       
       const response = await fetch("/api/credit-applications", {
         method: "POST",
@@ -188,45 +202,7 @@ export default function CreditApplication() {
     }
   };
 
-  const handleDocumentChange = (documentId: string, file: File | null) => {
-    setDocuments(prev => ({
-      ...prev,
-      [documentId]: file
-    }));
-  };
 
-  const getRequiredDocuments = (userType: 'farmer' | 'company' | 'cooperative') => {
-    const requirements = {
-      farmer: [
-        { id: "bi", name: "Bilhete de Identidade (BI)", required: true },
-        { id: "soba_declaration", name: "Declaração do Soba", required: true },
-        { id: "municipal_declaration", name: "Declaração da Administração Municipal", required: true },
-        { id: "agricultural_proof", name: "Comprovativo da Actividade Agrícola", required: true },
-        { id: "residence_certificate", name: "Atestado de Residência", required: false },
-      ],
-      company: [
-        { id: "bi", name: "Bilhete de Identidade (BI)", required: true },
-        { id: "company_document", name: "Documento da Empresa", required: true },
-        { id: "agricultural_proof", name: "Comprovativo da Actividade Agrícola", required: true },
-        { id: "business_plan", name: "Plano de Negócio", required: true },
-        { id: "residence_proof", name: "Comprovativo de Residência", required: true },
-        { id: "nif", name: "NIF", required: true },
-        { id: "commercial_license", name: "Alvará Comercial", required: true },
-        { id: "bank_statement", name: "Extrato Bancário", required: true },
-      ],
-      cooperative: [
-        { id: "bi", name: "Bilhete de Identidade (BI)", required: true },
-        { id: "company_document", name: "Documento da Cooperativa", required: true },
-        { id: "agricultural_proof", name: "Comprovativo da Actividade Agrícola", required: true },
-        { id: "business_plan", name: "Plano de Negócio", required: true },
-        { id: "residence_proof", name: "Comprovativo de Residência", required: true },
-        { id: "nif", name: "NIF", required: true },
-        { id: "commercial_license", name: "Alvará Comercial", required: true },
-        { id: "bank_statement", name: "Extrato Bancário", required: true },
-      ],
-    };
-    return requirements[userType] || [];
-  };
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -465,13 +441,240 @@ export default function CreditApplication() {
             </CardContent>
           </Card>
 
-          {/* Document Upload Section */}
+          {/* Financial Information Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center text-agri-dark">
+                <FileText className="w-6 h-6 mr-2" />
+                Informações Financeiras
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Form {...form}>
+                <div className="space-y-6">
+                  <div className="grid md:grid-cols-2 gap-6">
+                    <FormField
+                      control={form.control}
+                      name="monthlyIncome"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="form-label">Rendimento Mensal Atual</FormLabel>
+                          <FormControl>
+                            <Input 
+                              {...field}
+                              placeholder="AOA 150,000"
+                              className="form-input"
+                              onChange={(e) => {
+                                const formatted = formatKwanza(parseKwanza(e.target.value));
+                                field.onChange(formatted);
+                              }}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="expectedProjectIncome"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="form-label">Rendimento Esperado do Projeto</FormLabel>
+                          <FormControl>
+                            <Input 
+                              {...field}
+                              placeholder="AOA 300,000"
+                              className="form-input"
+                              onChange={(e) => {
+                                const formatted = formatKwanza(parseKwanza(e.target.value));
+                                field.onChange(formatted);
+                              }}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <div className="grid md:grid-cols-2 gap-6">
+                    <FormField
+                      control={form.control}
+                      name="monthlyExpenses"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="form-label">Despesas Mensais</FormLabel>
+                          <FormControl>
+                            <Input 
+                              {...field}
+                              placeholder="AOA 80,000"
+                              className="form-input"
+                              onChange={(e) => {
+                                const formatted = formatKwanza(parseKwanza(e.target.value));
+                                field.onChange(formatted);
+                              }}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="otherDebts"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="form-label">Outras Dívidas (Opcional)</FormLabel>
+                          <FormControl>
+                            <Input 
+                              {...field}
+                              placeholder="AOA 0"
+                              className="form-input"
+                              onChange={(e) => {
+                                const formatted = formatKwanza(parseKwanza(e.target.value));
+                                field.onChange(formatted);
+                              }}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <div className="grid md:grid-cols-2 gap-6">
+                    <FormField
+                      control={form.control}
+                      name="familyMembers"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="form-label">Número de Membros da Família</FormLabel>
+                          <FormControl>
+                            <Input 
+                              {...field}
+                              type="number"
+                              placeholder="4"
+                              className="form-input"
+                              min="1"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="experienceYears"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="form-label">Anos de Experiência na Agricultura</FormLabel>
+                          <FormControl>
+                            <Input 
+                              {...field}
+                              type="number"
+                              placeholder="5"
+                              className="form-input"
+                              min="0"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  {/* Financial Summary */}
+                  {form.watch('monthlyIncome') && form.watch('expectedProjectIncome') && form.watch('monthlyExpenses') && (
+                    <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                      <h4 className="font-semibold text-blue-800 dark:text-blue-200 mb-2">Resumo Financeiro</h4>
+                      <div className="grid md:grid-cols-3 gap-4 text-sm">
+                        <div>
+                          <span className="text-blue-700 dark:text-blue-300">Rendimento Total Esperado:</span>
+                          <p className="font-medium text-blue-800 dark:text-blue-200">
+                            {formatKwanza(
+                              parseKwanza(form.watch('monthlyIncome') || '0') + 
+                              parseKwanza(form.watch('expectedProjectIncome') || '0')
+                            )}
+                          </p>
+                        </div>
+                        <div>
+                          <span className="text-blue-700 dark:text-blue-300">Rendimento Líquido:</span>
+                          <p className="font-medium text-blue-800 dark:text-blue-200">
+                            {formatKwanza(
+                              parseKwanza(form.watch('monthlyIncome') || '0') + 
+                              parseKwanza(form.watch('expectedProjectIncome') || '0') - 
+                              parseKwanza(form.watch('monthlyExpenses') || '0') - 
+                              parseKwanza(form.watch('otherDebts') || '0')
+                            )}
+                          </p>
+                        </div>
+                        <div>
+                          <span className="text-blue-700 dark:text-blue-300">Capacidade de Pagamento:</span>
+                          <p className="font-medium text-blue-800 dark:text-blue-200">
+                            {(() => {
+                              const totalIncome = parseKwanza(form.watch('monthlyIncome') || '0') + parseKwanza(form.watch('expectedProjectIncome') || '0');
+                              const totalExpenses = parseKwanza(form.watch('monthlyExpenses') || '0') + parseKwanza(form.watch('otherDebts') || '0');
+                              const netIncome = totalIncome - totalExpenses;
+                              const maxPayment = netIncome * 0.3; // 30% da renda líquida
+                              return formatKwanza(maxPayment);
+                            })()} (30% da renda líquida)
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </Form>
+            </CardContent>
+          </Card>
+
+          {/* Document Management Section */}
           {user && ['farmer', 'company', 'cooperative'].includes(user.userType) && (
-            <DocumentUpload
-              userType={user.userType as 'farmer' | 'company' | 'cooperative'}
-              documents={documents}
-              onDocumentChange={handleDocumentChange}
+            <DocumentManager
+              onDocumentsSelected={setSelectedDocuments}
+              selectedDocuments={selectedDocuments}
             />
+          )}
+
+          {/* Selected Documents Summary */}
+          {selectedDocuments.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center text-agri-dark">
+                  <FileText className="w-6 h-6 mr-2" />
+                  Documentos Selecionados para a Solicitação
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
+                  <p className="text-green-800 dark:text-green-200 font-medium mb-2">
+                    {selectedDocuments.length} documento(s) selecionado(s)
+                  </p>
+                  <p className="text-sm text-green-700 dark:text-green-300">
+                    Estes documentos serão anexados à sua solicitação de crédito e enviados para análise da instituição financeira.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Validation Message */}
+          {selectedDocuments.length === 0 && (
+            <Card>
+              <CardContent className="p-6">
+                <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
+                  <p className="text-yellow-800 dark:text-yellow-200 font-medium mb-2">
+                    ⚠️ Nenhum documento selecionado
+                  </p>
+                  <p className="text-sm text-yellow-700 dark:text-yellow-300">
+                    Selecione pelo menos um documento para enviar com a sua solicitação de crédito.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
           )}
 
           {/* Submit/Cancel Buttons - Moved to the end */}
@@ -488,9 +691,10 @@ export default function CreditApplication() {
                 </Button>
                 <Button
                   type="button"
-                  disabled={createApplication.isPending}
+                  disabled={createApplication.isPending || selectedDocuments.length === 0}
                   onClick={form.handleSubmit(onSubmit)}
-                  className="flex-1 bg-agri-primary hover:bg-agri-dark"
+                  className="flex-1 bg-agri-primary hover:bg-agri-dark disabled:opacity-50 disabled:cursor-not-allowed"
+                  title={selectedDocuments.length === 0 ? "Selecione pelo menos um documento para continuar" : ""}
                 >
                   {createApplication.isPending ? "Enviando..." : "Enviar Solicitação"}
                 </Button>
