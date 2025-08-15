@@ -98,11 +98,11 @@ export default function ApplicationDetails() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 py-8">
+      <div className="min-h-screen bg-gray-50 py-4 sm:py-8">
         <div className="container mx-auto px-4 max-w-4xl">
-          <div className="space-y-6">
-            <Skeleton className="h-8 w-64" />
-            <Skeleton className="h-96 w-full" />
+          <div className="space-y-4 sm:space-y-6">
+            <Skeleton className="h-6 sm:h-8 w-48 sm:w-64" />
+            <Skeleton className="h-64 sm:h-96 w-full" />
           </div>
         </div>
       </div>
@@ -111,11 +111,11 @@ export default function ApplicationDetails() {
 
   if (!application) {
     return (
-      <div className="min-h-screen bg-gray-50 py-8">
+      <div className="min-h-screen bg-gray-50 py-4 sm:py-8">
         <div className="container mx-auto px-4 max-w-4xl">
-          <div className="text-center py-12">
-            <h1 className="text-2xl font-bold text-gray-900 mb-4">Solicitação não encontrada</h1>
-            <p className="text-gray-600 mb-6">A solicitação que procura não existe ou foi removida.</p>
+          <div className="text-center py-8 sm:py-12">
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4">Solicitação não encontrada</h1>
+            <p className="text-gray-600 mb-6 text-sm sm:text-base">A solicitação que procura não existe ou foi removida.</p>
             <Button onClick={() => setLocation('/dashboard')}>
               <ArrowLeft className="w-4 h-4 mr-2" />
               Voltar ao Dashboard
@@ -129,32 +129,32 @@ export default function ApplicationDetails() {
   const status = getStatusLabel(application.status || 'pending');
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+    <div className="min-h-screen bg-gray-50 py-4 sm:py-8">
       <div className="container mx-auto px-4 max-w-4xl">
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           {/* Header */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
               <Button 
                 variant="ghost" 
                 onClick={() => setLocation('/dashboard')}
-                className="flex items-center"
+                className="flex items-center self-start"
               >
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Voltar
               </Button>
               <div>
-                <h1 className="text-3xl font-bold text-agri-dark">Detalhes da Solicitação</h1>
-                <p className="text-gray-600">Visualize todas as informações da sua solicitação</p>
+                <h1 className="text-2xl sm:text-3xl font-bold text-agri-dark">Detalhes da Solicitação</h1>
+                <p className="text-gray-600 text-sm sm:text-base">Visualize todas as informações da sua solicitação</p>
               </div>
             </div>
-            <Badge className={status.className}>
+            <Badge className={`${status.className} self-start sm:self-auto`}>
               {status.label}
             </Badge>
           </div>
 
           {/* Application Details */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="space-y-6">
             {/* Project Information */}
             <Card>
               <CardHeader>
@@ -191,21 +191,21 @@ export default function ApplicationDetails() {
               </CardHeader>
               <CardContent className="space-y-6">
                 {/* Informações do Crédito */}
-                <div className="grid md:grid-cols-3 gap-4">
-                  <div className="bg-green-50 p-4 rounded-lg border border-green-200">
-                    <label className="text-sm font-medium text-green-700">Montante Solicitado</label>
-                    <p className="text-2xl font-bold text-green-800 mt-1">{formatKwanza(application.amount)}</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                  <div className="bg-green-50 p-3 sm:p-4 rounded-lg border border-green-200">
+                    <label className="text-xs sm:text-sm font-medium text-green-700">Montante Solicitado</label>
+                    <p className="text-lg sm:text-2xl font-bold text-green-800 mt-1">{formatKwanza(application.amount)}</p>
                   </div>
                   
-                  <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                    <label className="text-sm font-medium text-blue-700">Prazo</label>
-                    <p className="text-2xl font-bold text-blue-800 mt-1">{application.term} meses</p>
+                  <div className="bg-blue-50 p-3 sm:p-4 rounded-lg border border-blue-200">
+                    <label className="text-xs sm:text-sm font-medium text-blue-700">Prazo</label>
+                    <p className="text-lg sm:text-2xl font-bold text-blue-800 mt-1">{application.term} meses</p>
                   </div>
                   
                   {application.interestRate && (
-                    <div className="bg-orange-50 p-4 rounded-lg border border-orange-200">
-                      <label className="text-sm font-medium text-orange-700">Taxa de Juro</label>
-                      <p className="text-2xl font-bold text-orange-800 mt-1">{application.interestRate}% anual</p>
+                    <div className="bg-orange-50 p-3 sm:p-4 rounded-lg border border-orange-200 sm:col-span-2 lg:col-span-1">
+                      <label className="text-xs sm:text-sm font-medium text-orange-700">Taxa de Juro</label>
+                      <p className="text-lg sm:text-2xl font-bold text-orange-800 mt-1">{application.interestRate}% anual</p>
                     </div>
                   )}
                 </div>
@@ -213,65 +213,65 @@ export default function ApplicationDetails() {
                 {/* Informações Financeiras do Solicitante */}
                 <div>
                   <h4 className="text-lg font-semibold text-gray-800 mb-4">Situação Financeira do Solicitante</h4>
-                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                     {(application as any).monthlyIncome && (
-                      <div className="bg-gray-50 p-4 rounded-lg border">
-                        <label className="text-sm font-medium text-gray-600">Rendimento Mensal Atual</label>
-                        <p className="text-lg font-semibold text-gray-800 mt-1">
+                      <div className="bg-gray-50 p-3 sm:p-4 rounded-lg border">
+                        <label className="text-xs sm:text-sm font-medium text-gray-600">Rendimento Mensal Atual</label>
+                        <p className="text-sm sm:text-lg font-semibold text-gray-800 mt-1">
                           {formatKwanza(parseFloat((application as any).monthlyIncome))}
                         </p>
                       </div>
                     )}
                     
                     {(application as any).expectedProjectIncome && (
-                      <div className="bg-gray-50 p-4 rounded-lg border">
-                        <label className="text-sm font-medium text-gray-600">Rendimento Esperado do Projeto</label>
-                        <p className="text-lg font-semibold text-gray-800 mt-1">
+                      <div className="bg-gray-50 p-3 sm:p-4 rounded-lg border">
+                        <label className="text-xs sm:text-sm font-medium text-gray-600">Rendimento Esperado do Projeto</label>
+                        <p className="text-sm sm:text-lg font-semibold text-gray-800 mt-1">
                           {formatKwanza(parseFloat((application as any).expectedProjectIncome))}
                         </p>
                       </div>
                     )}
                     
                     {(application as any).monthlyExpenses && (
-                      <div className="bg-gray-50 p-4 rounded-lg border">
-                        <label className="text-sm font-medium text-gray-600">Despesas Mensais</label>
-                        <p className="text-lg font-semibold text-gray-800 mt-1">
+                      <div className="bg-gray-50 p-3 sm:p-4 rounded-lg border">
+                        <label className="text-xs sm:text-sm font-medium text-gray-600">Despesas Mensais</label>
+                        <p className="text-sm sm:text-lg font-semibold text-gray-800 mt-1">
                           {formatKwanza(parseFloat((application as any).monthlyExpenses))}
                         </p>
                       </div>
                     )}
                     
                     {(application as any).otherDebts && parseFloat((application as any).otherDebts) > 0 && (
-                      <div className="bg-gray-50 p-4 rounded-lg border">
-                        <label className="text-sm font-medium text-gray-600">Outras Dívidas Mensais</label>
-                        <p className="text-lg font-semibold text-gray-800 mt-1">
+                      <div className="bg-gray-50 p-3 sm:p-4 rounded-lg border">
+                        <label className="text-xs sm:text-sm font-medium text-gray-600">Outras Dívidas Mensais</label>
+                        <p className="text-sm sm:text-lg font-semibold text-gray-800 mt-1">
                           {formatKwanza(parseFloat((application as any).otherDebts))}
                         </p>
                       </div>
                     )}
                     
                     {(application as any).familyMembers && (
-                      <div className="bg-gray-50 p-4 rounded-lg border">
-                        <label className="text-sm font-medium text-gray-600">Membros da Família</label>
-                        <p className="text-lg font-semibold text-gray-800 mt-1">
+                      <div className="bg-gray-50 p-3 sm:p-4 rounded-lg border">
+                        <label className="text-xs sm:text-sm font-medium text-gray-600">Membros da Família</label>
+                        <p className="text-sm sm:text-lg font-semibold text-gray-800 mt-1">
                           {(application as any).familyMembers} pessoas
                         </p>
                       </div>
                     )}
                     
                     {(application as any).experienceYears !== undefined && (
-                      <div className="bg-gray-50 p-4 rounded-lg border">
-                        <label className="text-sm font-medium text-gray-600">Experiência na Agricultura</label>
-                        <p className="text-lg font-semibold text-gray-800 mt-1">
+                      <div className="bg-gray-50 p-3 sm:p-4 rounded-lg border">
+                        <label className="text-xs sm:text-sm font-medium text-gray-600">Experiência na Agricultura</label>
+                        <p className="text-sm sm:text-lg font-semibold text-gray-800 mt-1">
                           {(application as any).experienceYears} anos
                         </p>
                       </div>
                     )}
                     
                     {(application as any).productivity && (
-                      <div className="bg-gray-50 p-4 rounded-lg border">
-                        <label className="text-sm font-medium text-gray-600">Nível de Produtividade</label>
-                        <p className="text-lg font-semibold text-gray-800 mt-1">
+                      <div className="bg-gray-50 p-3 sm:p-4 rounded-lg border">
+                        <label className="text-xs sm:text-sm font-medium text-gray-600">Nível de Produtividade</label>
+                        <p className="text-sm sm:text-lg font-semibold text-gray-800 mt-1">
                           {(() => {
                             const productivity = (application as any).productivity;
                             if (productivity === 'small') return 'Pequeno Produtor';
@@ -284,9 +284,9 @@ export default function ApplicationDetails() {
                     )}
                     
                     {(application as any).creditDeliveryMethod && (
-                      <div className="bg-gray-50 p-4 rounded-lg border">
-                        <label className="text-sm font-medium text-gray-600">Método de Entrega do Crédito</label>
-                        <p className="text-lg font-semibold text-gray-800 mt-1">
+                      <div className="bg-gray-50 p-3 sm:p-4 rounded-lg border">
+                        <label className="text-xs sm:text-sm font-medium text-gray-600">Método de Entrega do Crédito</label>
+                        <p className="text-sm sm:text-lg font-semibold text-gray-800 mt-1">
                           {(() => {
                             const method = (application as any).creditDeliveryMethod;
                             if (method === 'total') return 'Entrega Total';
@@ -303,11 +303,11 @@ export default function ApplicationDetails() {
                 {(application as any).monthlyIncome && (application as any).expectedProjectIncome && (application as any).monthlyExpenses && (
                   <div>
                     <h4 className="text-lg font-semibold text-gray-800 mb-4">Análise de Viabilidade</h4>
-                    <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                      <div className="grid md:grid-cols-2 gap-4">
+                    <div className="bg-blue-50 p-3 sm:p-4 rounded-lg border border-blue-200">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                         <div>
-                          <label className="text-sm font-medium text-blue-700">Rendimento Total Esperado</label>
-                          <p className="text-lg font-bold text-blue-800 mt-1">
+                          <label className="text-xs sm:text-sm font-medium text-blue-700">Rendimento Total Esperado</label>
+                          <p className="text-sm sm:text-lg font-bold text-blue-800 mt-1">
                             {formatKwanza(
                               parseFloat((application as any).monthlyIncome) + 
                               parseFloat((application as any).expectedProjectIncome)
@@ -317,8 +317,8 @@ export default function ApplicationDetails() {
                         </div>
                         
                         <div>
-                          <label className="text-sm font-medium text-blue-700">Rendimento Líquido Estimado</label>
-                          <p className="text-lg font-bold text-blue-800 mt-1">
+                          <label className="text-xs sm:text-sm font-medium text-blue-700">Rendimento Líquido Estimado</label>
+                          <p className="text-sm sm:text-lg font-bold text-blue-800 mt-1">
                             {formatKwanza(
                               parseFloat((application as any).monthlyIncome) + 
                               parseFloat((application as any).expectedProjectIncome) - 
@@ -392,12 +392,12 @@ export default function ApplicationDetails() {
                 {application.documents && application.documents.length > 0 ? (
                   <div className="space-y-3">
                     {application.documents.map((doc) => (
-                      <div key={doc.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">
-                        <div className="flex items-center space-x-3">
-                          <FileText className="w-5 h-5 text-agri-primary" />
-                          <div>
-                            <p className="font-medium text-gray-900">{doc.originalFileName}</p>
-                            <div className="flex items-center space-x-4 text-sm text-gray-600">
+                      <div key={doc.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 bg-gray-50 rounded-lg border">
+                        <div className="flex items-start space-x-3 flex-1">
+                          <FileText className="w-5 h-5 text-agri-primary flex-shrink-0 mt-0.5" />
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-gray-900 text-sm sm:text-base truncate">{doc.originalFileName}</p>
+                            <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm text-gray-600 mt-1">
                               <span>Tipo: {getDocumentTypeLabel(doc.documentType)}</span>
                               <span>Tamanho: {formatFileSize(doc.fileSize)}</span>
                               <span>Versão: {doc.version}</span>
@@ -407,40 +407,40 @@ export default function ApplicationDetails() {
                                 </Badge>
                               )}
                             </div>
-                            <p className="text-xs text-gray-500">
+                            <p className="text-xs text-gray-500 mt-1">
                               Enviado em {format(new Date(doc.createdAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                             </p>
                           </div>
                         </div>
-                        <div className="flex items-center space-x-2">
+                        <div className="flex items-center space-x-2 self-start sm:self-center">
                           <Button
                             variant="outline"
                             size="sm"
                             onClick={() => viewDocument(doc.id, doc.originalFileName)}
-                            className="flex items-center space-x-2"
+                            className="flex items-center space-x-1 sm:space-x-2 text-xs sm:text-sm"
                             title="Visualizar"
                           >
-                            <Eye className="w-4 h-4" />
-                            <span>Ver</span>
+                            <Eye className="w-3 h-3 sm:w-4 sm:h-4" />
+                            <span className="hidden sm:inline">Ver</span>
                           </Button>
                           <Button
                             variant="outline"
                             size="sm"
                             onClick={() => downloadDocument(doc.id, doc.originalFileName)}
-                            className="flex items-center space-x-2"
+                            className="flex items-center space-x-1 sm:space-x-2 text-xs sm:text-sm"
                             title="Download"
                           >
-                            <Download className="w-4 h-4" />
-                            <span>Baixar</span>
+                            <Download className="w-3 h-3 sm:w-4 sm:h-4" />
+                            <span className="hidden sm:inline">Baixar</span>
                           </Button>
                         </div>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center py-8">
-                    <Paperclip className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                    <p className="text-gray-600">Nenhum documento foi anexado a esta solicitação.</p>
+                  <div className="text-center py-6 sm:py-8">
+                    <Paperclip className="w-8 h-8 sm:w-12 sm:h-12 text-gray-400 mx-auto mb-4" />
+                    <p className="text-gray-600 text-sm sm:text-base">Nenhum documento foi anexado a esta solicitação.</p>
                   </div>
                 )}
               </CardContent>
@@ -456,9 +456,9 @@ export default function ApplicationDetails() {
               </CardHeader>
               <CardContent>
                 {application.status === 'pending' && (
-                  <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
-                    <h4 className="font-medium text-yellow-800 mb-2">Aguardando Análise</h4>
-                    <p className="text-yellow-700 text-sm">
+                  <div className="bg-yellow-50 p-3 sm:p-4 rounded-lg border border-yellow-200">
+                    <h4 className="font-medium text-yellow-800 mb-2 text-sm sm:text-base">Aguardando Análise</h4>
+                    <p className="text-yellow-700 text-xs sm:text-sm leading-relaxed">
                       A sua solicitação está na fila para análise. Uma instituição financeira irá revisar 
                       os detalhes e entrar em contacto consigo em breve.
                     </p>
@@ -466,9 +466,9 @@ export default function ApplicationDetails() {
                 )}
                 
                 {application.status === 'under_review' && (
-                  <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                    <h4 className="font-medium text-blue-800 mb-2">Em Análise</h4>
-                    <p className="text-blue-700 text-sm">
+                  <div className="bg-blue-50 p-3 sm:p-4 rounded-lg border border-blue-200">
+                    <h4 className="font-medium text-blue-800 mb-2 text-sm sm:text-base">Em Análise</h4>
+                    <p className="text-blue-700 text-xs sm:text-sm leading-relaxed">
                       A sua solicitação está a ser analisada por uma instituição financeira. 
                       Pode ser contactado para informações adicionais.
                     </p>
@@ -476,9 +476,9 @@ export default function ApplicationDetails() {
                 )}
                 
                 {application.status === 'approved' && (
-                  <div className="bg-green-50 p-4 rounded-lg border border-green-200">
-                    <h4 className="font-medium text-green-800 mb-2">Aprovada!</h4>
-                    <p className="text-green-700 text-sm">
+                  <div className="bg-green-50 p-3 sm:p-4 rounded-lg border border-green-200">
+                    <h4 className="font-medium text-green-800 mb-2 text-sm sm:text-base">Aprovada!</h4>
+                    <p className="text-green-700 text-xs sm:text-sm leading-relaxed">
                       Parabéns! A sua solicitação foi aprovada. Uma conta de crédito será criada 
                       e receberá os detalhes em breve.
                     </p>
@@ -486,9 +486,9 @@ export default function ApplicationDetails() {
                 )}
                 
                 {application.status === 'rejected' && (
-                  <div className="bg-red-50 p-4 rounded-lg border border-red-200">
-                    <h4 className="font-medium text-red-800 mb-2">Rejeitada</h4>
-                    <p className="text-red-700 text-sm">
+                  <div className="bg-red-50 p-3 sm:p-4 rounded-lg border border-red-200">
+                    <h4 className="font-medium text-red-800 mb-2 text-sm sm:text-base">Rejeitada</h4>
+                    <p className="text-red-700 text-xs sm:text-sm leading-relaxed">
                       Infelizmente, a sua solicitação não foi aprovada. Revise o motivo acima 
                       e considere submeter uma nova solicitação com as correções necessárias.
                     </p>

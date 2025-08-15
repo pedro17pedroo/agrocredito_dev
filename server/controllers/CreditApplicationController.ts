@@ -3,6 +3,7 @@ import { z } from "zod";
 import { CreditApplicationModel } from "../models/CreditApplication";
 import { AccountModel } from "../models/Account";
 import { NotificationModel } from "../models/Notification";
+import { UserModel } from "../models/User";
 import { insertCreditApplicationSchema } from "@shared/schema";
 
 export class CreditApplicationController {
@@ -38,7 +39,7 @@ export class CreditApplicationController {
         console.log('⚠️ Nenhum documento fornecido para associação');
       }
 
-      // Create notification for admin/financial institutions
+      // Create notification for the applicant
       await NotificationModel.create({
         userId: req.user.id,
         type: "application_submitted",
@@ -46,6 +47,27 @@ export class CreditApplicationController {
         message: `Sua solicitação de crédito para o projeto "${application.projectName}" foi enviada com sucesso e está sendo analisada.`,
         relatedId: application.id,
       });
+
+      // Create notifications for all financial institutions about the new application
+      try {
+        const financialInstitutions = await UserModel.findFinancialInstitutions();
+        
+        const notificationPromises = financialInstitutions.map(institution => 
+          NotificationModel.create({
+            userId: institution.id,
+            type: "new_application_received",
+            title: "Nova Solicitação de Crédito",
+            message: `Nova solicitação de crédito recebida de ${req.user.fullName} para o projeto "${application.projectName}" no valor de ${application.amount} AOA.`,
+            relatedId: application.id,
+          })
+        );
+        
+        await Promise.all(notificationPromises);
+        console.log(`✅ Notificações enviadas para ${financialInstitutions.length} instituições financeiras`);
+      } catch (notificationError) {
+        console.error('❌ Erro ao enviar notificações para instituições financeiras:', notificationError);
+        // Não falhar a criação da aplicação por causa das notificações
+      }
 
       res.status(201).json(application);
     } catch (error) {
@@ -79,7 +101,7 @@ export class CreditApplicationController {
       }
 
       // Buscar documentos associados à aplicação
-      let documents = [];
+      let documents: any[] = [];
       try {
         const { DocumentModel } = await import("../models/Document");
         documents = await DocumentModel.findByCreditApplication(id);

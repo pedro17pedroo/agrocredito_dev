@@ -16,6 +16,7 @@ import CreditApplicationsView from "@/components/financial/credit-applications-v
 import CreditProgramManagement from "@/components/credit/credit-program-management";
 import FinancialReports from "@/components/financial/financial-reports";
 import UserManagement from "@/components/financial/user-management";
+import NotificationCenter from "@/components/notifications/notification-center";
 
 type ViewType = 'applications' | 'programs' | 'users' | 'reports';
 
@@ -208,6 +209,7 @@ export default function FinancialInstitutionDashboard() {
               </div>
             </div>
             <div className="flex items-center space-x-4">
+              <NotificationCenter />
               <span className="text-sm text-gray-600">
                 Bem-vindo, {user.fullName}
               </span>

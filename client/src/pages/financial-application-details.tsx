@@ -306,35 +306,34 @@ export default function FinancialApplicationDetails() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-6xl mx-auto p-6">
+      <div className="max-w-6xl mx-auto p-3 sm:p-6">
         {/* Header */}
-        <div className="mb-6">
-          <Button variant="outline" onClick={goBack} className="mb-4">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Voltar ao Dashboard
+        <div className="mb-4 sm:mb-6">
+          <Button variant="outline" onClick={goBack} className="mb-4 text-xs sm:text-sm">
+            <ArrowLeft className="h-3 w-3 sm:h-4 sm:w-4 mr-2" />
+            <span className="hidden sm:inline">Voltar ao Dashboard</span>
+            <span className="sm:hidden">Voltar</span>
           </Button>
           
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">{application.projectName}</h1>
-              <p className="text-gray-600 mt-1">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="flex-1 min-w-0">
+              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 truncate">{application.projectName}</h1>
+              <p className="text-gray-600 mt-1 text-xs sm:text-sm">
                 Solicitação criada em {formatDate(application.createdAt)}
               </p>
             </div>
-            <div className="flex items-center gap-3">
-              <Badge className={statusColors[application.status]}>
+            <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+              <Badge className={`${statusColors[application.status]} text-xs`}>
                 {statusLabels[application.status]}
               </Badge>
-              <Badge variant="outline">
+              <Badge variant="outline" className="text-xs">
                 {projectTypeLabels[application.projectType as keyof typeof projectTypeLabels]}
               </Badge>
             </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Coluna Principal - Detalhes da Solicitação */}
-          <div className="lg:col-span-2 space-y-6">
+        <div className="space-y-4 sm:space-y-6">
             {/* Informações do Projeto */}
             <Card>
               <CardHeader>
@@ -344,43 +343,43 @@ export default function FinancialApplicationDetails() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-3 sm:space-y-4">
                   <div>
-                    <label className="text-sm font-medium text-gray-700">Nome do Projeto</label>
-                    <p className="text-gray-900">{application.projectName}</p>
+                    <label className="text-xs sm:text-sm font-medium text-gray-700">Nome do Projeto</label>
+                    <p className="text-gray-900 text-sm sm:text-base">{application.projectName}</p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-700">Tipo de Projeto</label>
-                    <p className="text-gray-900">
+                    <label className="text-xs sm:text-sm font-medium text-gray-700">Tipo de Projeto</label>
+                    <p className="text-gray-900 text-sm sm:text-base">
                       {projectTypeLabels[application.projectType as keyof typeof projectTypeLabels]}
                     </p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-700">Valor Solicitado</label>
-                    <p className="text-gray-900 font-semibold text-lg">
+                    <label className="text-xs sm:text-sm font-medium text-gray-700">Valor Solicitado</label>
+                    <p className="text-gray-900 font-semibold text-base sm:text-lg">
                       {formatKwanza(parseFloat(application.amount))}
                     </p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-700">Prazo</label>
-                    <p className="text-gray-900">{application.term} meses</p>
+                    <label className="text-xs sm:text-sm font-medium text-gray-700">Prazo</label>
+                    <p className="text-gray-900 text-sm sm:text-base">{application.term} meses</p>
                   </div>
                   {application.productivity && (
                     <div>
-                      <label className="text-sm font-medium text-gray-700">Nível de Produtividade</label>
-                      <p className="text-gray-900">{application.productivity}</p>
+                      <label className="text-xs sm:text-sm font-medium text-gray-700">Nível de Produtividade</label>
+                      <p className="text-gray-900 text-sm sm:text-base">{application.productivity}</p>
                     </div>
                   )}
                   {application.agricultureType && (
                     <div>
-                      <label className="text-sm font-medium text-gray-700">Tipo de Agricultura</label>
-                      <p className="text-gray-900">{application.agricultureType}</p>
+                      <label className="text-xs sm:text-sm font-medium text-gray-700">Tipo de Agricultura</label>
+                      <p className="text-gray-900 text-sm sm:text-base">{application.agricultureType}</p>
                     </div>
                   )}
                   {application.creditDeliveryMethod && (
                     <div>
-                      <label className="text-sm font-medium text-gray-700">Método de Entrega do Crédito</label>
-                      <p className="text-gray-900">{application.creditDeliveryMethod}</p>
+                      <label className="text-xs sm:text-sm font-medium text-gray-700">Método de Entrega do Crédito</label>
+                      <p className="text-gray-900 text-sm sm:text-base">{application.creditDeliveryMethod}</p>
                     </div>
                   )}
                 </div>
@@ -388,16 +387,16 @@ export default function FinancialApplicationDetails() {
                 <Separator />
                 
                 <div>
-                  <label className="text-sm font-medium text-gray-700">Descrição do Projeto</label>
-                  <p className="text-gray-900 mt-1 whitespace-pre-wrap">{application.description}</p>
+                  <label className="text-xs sm:text-sm font-medium text-gray-700">Descrição do Projeto</label>
+                  <p className="text-gray-900 mt-1 whitespace-pre-wrap text-sm sm:text-base leading-relaxed">{application.description}</p>
                 </div>
                 
                 {application.guaranteeDescription && (
                   <>
                     <Separator />
                     <div>
-                      <label className="text-sm font-medium text-gray-700">Descrição da Garantia</label>
-                      <p className="text-gray-900 mt-1 whitespace-pre-wrap">{application.guaranteeDescription}</p>
+                      <label className="text-xs sm:text-sm font-medium text-gray-700">Descrição da Garantia</label>
+                      <p className="text-gray-900 mt-1 whitespace-pre-wrap text-sm sm:text-base leading-relaxed">{application.guaranteeDescription}</p>
                     </div>
                   </>
                 )}
@@ -413,49 +412,49 @@ export default function FinancialApplicationDetails() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-3 sm:space-y-4">
                   {application.monthlyIncome && (
                     <div>
-                      <label className="text-sm font-medium text-gray-700">Renda Mensal</label>
-                      <p className="text-gray-900 font-semibold">
+                      <label className="text-xs sm:text-sm font-medium text-gray-700">Renda Mensal</label>
+                      <p className="text-gray-900 font-semibold text-sm sm:text-base">
                         {formatKwanza(parseFloat(application.monthlyIncome))}
                       </p>
                     </div>
                   )}
                   {application.expectedProjectIncome && (
                     <div>
-                      <label className="text-sm font-medium text-gray-700">Renda Esperada do Projeto</label>
-                      <p className="text-gray-900 font-semibold">
+                      <label className="text-xs sm:text-sm font-medium text-gray-700">Renda Esperada do Projeto</label>
+                      <p className="text-gray-900 font-semibold text-sm sm:text-base">
                         {formatKwanza(parseFloat(application.expectedProjectIncome))}
                       </p>
                     </div>
                   )}
                   {application.monthlyExpenses && (
                     <div>
-                      <label className="text-sm font-medium text-gray-700">Despesas Mensais</label>
-                      <p className="text-gray-900">
+                      <label className="text-xs sm:text-sm font-medium text-gray-700">Despesas Mensais</label>
+                      <p className="text-gray-900 text-sm sm:text-base">
                         {formatKwanza(parseFloat(application.monthlyExpenses))}
                       </p>
                     </div>
                   )}
                   {application.otherDebts && (
                     <div>
-                      <label className="text-sm font-medium text-gray-700">Outras Dívidas</label>
-                      <p className="text-gray-900">
+                      <label className="text-xs sm:text-sm font-medium text-gray-700">Outras Dívidas</label>
+                      <p className="text-gray-900 text-sm sm:text-base">
                         {formatKwanza(parseFloat(application.otherDebts))}
                       </p>
                     </div>
                   )}
                   {application.familyMembers && (
                     <div>
-                      <label className="text-sm font-medium text-gray-700">Membros da Família</label>
-                      <p className="text-gray-900">{application.familyMembers} pessoas</p>
+                      <label className="text-xs sm:text-sm font-medium text-gray-700">Membros da Família</label>
+                      <p className="text-gray-900 text-sm sm:text-base">{application.familyMembers} pessoas</p>
                     </div>
                   )}
                   {application.experienceYears && (
                     <div>
-                      <label className="text-sm font-medium text-gray-700">Anos de Experiência</label>
-                      <p className="text-gray-900">{application.experienceYears} anos</p>
+                      <label className="text-xs sm:text-sm font-medium text-gray-700">Anos de Experiência</label>
+                      <p className="text-gray-900 text-sm sm:text-base">{application.experienceYears} anos</p>
                     </div>
                   )}
                 </div>
@@ -472,41 +471,41 @@ export default function FinancialApplicationDetails() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-2">
+                  <div className="space-y-2 sm:space-y-3">
                     {application.documents.map((doc, index) => (
-                      <div key={index} className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-                        <div className="flex items-center gap-3">
-                          <FileText className="h-4 w-4 text-gray-500" />
-                          <div>
-                            <span className="text-sm font-medium">
+                      <div key={index} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                        <div className="flex items-start gap-3 flex-1 min-w-0">
+                          <FileText className="h-4 w-4 text-gray-500 flex-shrink-0 mt-0.5" />
+                          <div className="flex-1 min-w-0">
+                            <span className="text-xs sm:text-sm font-medium block truncate">
                               {typeof doc === 'string' ? doc : (doc as any).originalFileName || (doc as any).documentType || 'Documento'}
                             </span>
                             {typeof doc !== 'string' && (doc as any).fileSize && (
-                              <p className="text-xs text-gray-500">
+                              <p className="text-xs text-gray-500 mt-1">
                                 {formatFileSize((doc as any).fileSize)}
                               </p>
                             )}
                           </div>
                         </div>
                         {typeof doc !== 'string' && (doc as any).id && (
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1 sm:gap-2 self-start sm:self-center">
                             <Button
                               variant="ghost"
                               size="sm"
                               onClick={() => viewDocument((doc as any).id, (doc as any).originalFileName || 'documento')}
-                              className="h-8 w-8 p-0 text-gray-400 hover:text-green-600"
+                              className="h-7 w-7 sm:h-8 sm:w-8 p-0 text-gray-400 hover:text-green-600"
                               title="Visualizar"
                             >
-                              <Eye className="h-4 w-4" />
+                              <Eye className="h-3 w-3 sm:h-4 sm:w-4" />
                             </Button>
                             <Button
                               variant="ghost"
                               size="sm"
                               onClick={() => downloadDocument((doc as any).id, (doc as any).originalFileName || 'documento')}
-                              className="h-8 w-8 p-0 text-gray-400 hover:text-blue-600"
+                              className="h-7 w-7 sm:h-8 sm:w-8 p-0 text-gray-400 hover:text-blue-600"
                               title="Download"
                             >
-                              <Download className="h-4 w-4" />
+                              <Download className="h-3 w-3 sm:h-4 sm:w-4" />
                             </Button>
                           </div>
                         )}
@@ -516,10 +515,9 @@ export default function FinancialApplicationDetails() {
                 </CardContent>
               </Card>
             )}
-          </div>
 
-          {/* Coluna Lateral - Informações do Solicitante e Ações */}
-          <div className="space-y-6">
+          {/* Informações do Solicitante e Ações */}
+          <div className="space-y-4 sm:space-y-6">
             {/* Informações do Solicitante */}
             <Card>
               <CardHeader>

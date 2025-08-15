@@ -526,7 +526,7 @@ export default function CreditApplicationsView() {
                   <FileText className="w-5 h-5 mr-2" />
                   Informações do Projeto
                 </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-6">
                   <div className="space-y-4">
                     <div>
                       <label className="text-sm font-medium text-gray-600">Nome do Projeto</label>
@@ -599,7 +599,7 @@ export default function CreditApplicationsView() {
                 {/* Informações do Crédito */}
                 <div className="mb-6">
                   <h4 className="text-md font-medium text-gray-700 mb-3">Detalhes do Crédito Solicitado</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-4">
                     <div className="bg-green-50 p-4 rounded-lg border border-green-200">
                       <label className="text-sm font-medium text-green-700">Valor Solicitado</label>
                       <p className="text-2xl font-bold text-green-800 mt-1">
@@ -622,7 +622,7 @@ export default function CreditApplicationsView() {
                 {/* Situação Financeira do Solicitante */}
                 <div className="mb-6">
                   <h4 className="text-md font-medium text-gray-700 mb-3">Situação Financeira do Solicitante</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="space-y-4">
                     {(selectedApplication as any).monthlyIncome && (
                       <div className="bg-gray-50 p-4 rounded-lg border">
                         <label className="text-sm font-medium text-gray-600">Rendimento Mensal Atual</label>
@@ -684,7 +684,7 @@ export default function CreditApplicationsView() {
                   <div className="mb-6">
                     <h4 className="text-md font-medium text-gray-700 mb-3">Análise de Capacidade de Pagamento</h4>
                     <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="space-y-4">
                         <div>
                           <label className="text-sm font-medium text-blue-700">Rendimento Total Esperado</label>
                           <p className="text-lg font-bold text-blue-800 mt-1">
@@ -740,7 +740,7 @@ export default function CreditApplicationsView() {
                       Dados do Cliente
                     </h3>
                     <div className="bg-gray-50 p-6 rounded-lg border">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-6">
                         <div className="space-y-3">
                           <div>
                             <label className="text-sm font-medium text-gray-600">Nome Completo</label>
@@ -868,7 +868,7 @@ export default function CreditApplicationsView() {
                         </svg>
                         Checklist de Documentos Obrigatórios
                       </h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div className="space-y-3">
                         {selectedApplication.user?.userType === 'farmer' ? (
                           [
                             'Bilhete de Identidade (cópia)',
@@ -946,7 +946,7 @@ export default function CreditApplicationsView() {
                   <TrendingUp className="w-5 h-5 mr-2" />
                   Análise de Risco e Recomendações
                 </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-6">
                   {/* Score de Risco */}
                   <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-6 rounded-lg border border-blue-200">
                     <h4 className="font-medium text-blue-900 mb-3">Score de Risco</h4>
@@ -1070,7 +1070,7 @@ export default function CreditApplicationsView() {
                 </h3>
                 
                 {selectedApplication.status === 'pending' || selectedApplication.status === 'under_review' ? (
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-4">
                     {/* Aprovar */}
                     <button 
                       onClick={() => selectedApplication && handleApprove(selectedApplication)}

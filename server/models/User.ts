@@ -22,6 +22,11 @@ export class UserModel {
     return user;
   }
 
+  static async findByBI(bi: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.bi, bi));
+    return user;
+  }
+
   static async findAll(): Promise<User[]> {
     return await db
       .select()

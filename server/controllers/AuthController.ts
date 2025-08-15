@@ -8,26 +8,47 @@ import { insertUserSchema } from "@shared/schema";
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
 
+// Mapeamento entre userType e nome do perfil
+const getUserProfileName = (userType: string): string => {
+  const profileMap: { [key: string]: string } = {
+    'farmer': 'Agricultor',
+    'company': 'Empresa Agrícola',
+    'cooperative': 'Cooperativa',
+    'financial_institution': 'Instituição Financeira',
+    'admin': 'Administrador'
+  };
+  return profileMap[userType] || 'Agricultor'; // Default para Agricultor
+};
+
 export class AuthController {
   static async register(req: Request, res: Response) {
     try {
       const userData = insertUserSchema.parse(req.body);
       
       // Check if user already exists
-      const existingUser = await UserModel.findByPhone(userData.phone) || 
-                          (userData.email ? await UserModel.findByEmail(userData.email) : null);
+      const existingUser = (userData.phone ? await UserModel.findByPhone(userData.phone) : null) ||
+                          (userData.email ? await UserModel.findByEmail(userData.email) : null) ||
+                          (userData.bi ? await UserModel.findByBI(userData.bi) : null);
       
       if (existingUser) {
-        return res.status(400).json({ message: "Utilizador já existe com este telefone ou email" });
+        return res.status(400).json({ message: "Utilizador já existe com este telefone, email ou BI" });
       }
 
       // Hash password
       const hashedPassword = await bcrypt.hash(userData.password, 10);
       
+      // Find the appropriate profile based on userType
+      const profileName = getUserProfileName(userData.userType);
+      const profile = await ProfileModel.findByName(profileName);
+      if (!profile) {
+        return res.status(400).json({ message: `Perfil '${profileName}' não encontrado para o tipo de utilizador '${userData.userType}'` });
+      }
+
       // Create user
       const user = await UserModel.create({
         ...userData,
         password: hashedPassword,
+        profileId: profile.id,
       });
 
       // Generate JWT token

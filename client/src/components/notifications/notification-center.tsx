@@ -14,7 +14,7 @@ import { ptBR } from "date-fns/locale";
 interface Notification {
   id: string;
   userId: string;
-  type: "payment_due" | "application_approved" | "application_rejected" | "account_created" | "payment_confirmed";
+  type: "payment_due" | "application_approved" | "application_rejected" | "account_created" | "payment_confirmed" | "new_application_received" | "application_submitted" | "application_under_review";
   title: string;
   message: string;
   isRead: boolean;
@@ -69,6 +69,12 @@ export default function NotificationCenter() {
         return <CreditCard className="w-5 h-5 text-blue-500" />;
       case "payment_confirmed":
         return <Check className="w-5 h-5 text-green-500" />;
+      case "new_application_received":
+        return <FileText className="w-5 h-5 text-blue-600" />;
+      case "application_submitted":
+        return <FileText className="w-5 h-5 text-green-600" />;
+      case "application_under_review":
+        return <Clock className="w-5 h-5 text-yellow-500" />;
       default:
         return <AlertCircle className="w-5 h-5 text-gray-500" />;
     }
@@ -86,8 +92,37 @@ export default function NotificationCenter() {
         return "border-l-blue-500";
       case "payment_confirmed":
         return "border-l-green-500";
+      case "new_application_received":
+        return "border-l-blue-600";
+      case "application_submitted":
+        return "border-l-green-600";
+      case "application_under_review":
+        return "border-l-yellow-500";
       default:
         return "border-l-gray-500";
+    }
+  };
+
+  const getNotificationBadgeColor = (type: string) => {
+    switch (type) {
+      case "payment_due":
+        return "bg-orange-100 text-orange-800";
+      case "application_approved":
+        return "bg-green-100 text-green-800";
+      case "application_rejected":
+        return "bg-red-100 text-red-800";
+      case "account_created":
+        return "bg-blue-100 text-blue-800";
+      case "payment_confirmed":
+        return "bg-green-100 text-green-800";
+      case "new_application_received":
+        return "bg-blue-100 text-blue-800";
+      case "application_submitted":
+        return "bg-green-100 text-green-800";
+      case "application_under_review":
+        return "bg-yellow-100 text-yellow-800";
+      default:
+        return "bg-gray-100 text-gray-800";
     }
   };
 
