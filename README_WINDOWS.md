@@ -247,6 +247,35 @@ npm run db:test:win
 
 ## 🔧 Resolução de Problemas
 
+### **⚠️ Conflito entre MySQL Local e Docker**
+
+**Problema:** Seeds não funcionam ou mostram erro "Access denied" com IP 172.x.x.x
+
+**Causa:** Docker MySQL está a correr na mesma porta (3306) que o MySQL local
+
+**Solução:**
+```powershell
+# 1. Parar contentores Docker
+docker-compose -f docker-compose.simple.yml down
+# ou
+docker-compose down
+
+# 2. Verificar se MySQL local está ativo
+brew services list | grep mysql
+# Deve mostrar: mysql started
+
+# 3. Testar conexão
+npm run db:test:win
+
+# 4. Executar seeds
+npm run db:seed:win
+```
+
+**Importante:** Para usar a base de dados local no Windows:
+- ✅ Pare todos os contentores Docker antes de executar seeds
+- ✅ Certifique-se que o MySQL local está a correr
+- ✅ Use sempre os scripts `:win` (ex: `db:seed:win`)
+
 ### **Erro: "Seeds executam mas não mostram output"**
 ✅ **Solução:** Este é um comportamento normal quando os dados já existem na base de dados.
 
@@ -264,6 +293,7 @@ npm run db:test:win
 - Credenciais incorretas no .env
 - Tabelas não foram criadas (`npm run db:push`)
 - Dados já existem (comportamento normal)
+- **Conflito com Docker MySQL** (ver secção acima)
 
 ### **Erro: "cross-env não é reconhecido"**
 ✅ **Resolvido!** Use os scripts específicos para Windows (`npm run dev:win`) ou os scripts PowerShell/Batch.
