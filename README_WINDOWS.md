@@ -120,20 +120,25 @@ npm run dev
 
 ### **Desenvolvimento:**
 ```bash
-npm run dev          # Iniciar servidor de desenvolvimento
-npm run build        # Build para produção
-npm run start        # Iniciar versão de produção
-npm run check        # Verificar tipos TypeScript
+npm run dev       # Servidor de desenvolvimento (multiplataforma)
+npm run dev:win   # Servidor de desenvolvimento (Windows nativo)
+npm run build     # Build para produção
+npm run start     # Iniciar servidor de produção (multiplataforma)
+npm run start:win # Iniciar servidor de produção (Windows nativo)
+npm run check     # Verificar tipos TypeScript
 ```
 
-### **Base de dados:**
+### **Base de Dados:**
 ```bash
-npm run db:push                # Aplicar schema à base de dados
-npm run db:generate            # Gerar migrações
-npm run db:studio              # Abrir Drizzle Studio
-npm run db:seed                # Seed principal
-npm run db:seed-applications   # Seed de aplicações
-npm run db:seed-credit-programs # Seed de programas de crédito
+npm run db:push              # Aplicar mudanças no schema
+npm run db:studio            # Interface visual da BD
+npm run db:seed              # Popular BD com dados básicos
+npm run db:seed:win          # Popular BD com dados básicos (Windows)
+npm run db:seed-all          # Popular BD com todos os dados de teste
+npm run db:seed-all:win      # Popular BD com todos os dados de teste (Windows)
+npm run db:seed-applications # Popular apenas aplicações de crédito
+npm run db:seed-credit-programs # Popular apenas programas de crédito
+npm run db:generate          # Gerar migrações
 ```
 
 ### **Docker:**
@@ -155,10 +160,61 @@ npm run clean     # Limpar arquivos temporários
 npm run health    # Verificar saúde da aplicação
 ```
 
+## 🪟 Alternativas Específicas para Windows
+
+### **Scripts PowerShell (Recomendado)**
+Para uma experiência mais robusta no Windows, use os scripts PowerShell:
+
+```powershell
+# Executar servidor de desenvolvimento
+.\scripts\dev-windows.ps1
+
+# Ou via PowerShell diretamente
+powershell -ExecutionPolicy Bypass -File .\scripts\dev-windows.ps1
+```
+
+### **Scripts Batch (Alternativa)**
+Se preferir usar Command Prompt:
+
+```cmd
+# Executar servidor de desenvolvimento
+.\scripts\dev-windows.bat
+```
+
+### **Scripts npm Específicos para Windows**
+```bash
+npm run dev:win       # Desenvolvimento (Windows)
+npm run start:win     # Produção (Windows)
+npm run db:seed:win   # Seed básico (Windows)
+npm run db:seed-all:win # Seed completo (Windows)
+```
+
+### **Seeds no Windows**
+✅ **Os scripts de seed funcionam perfeitamente no Windows!**
+
+Todos os scripts de seed foram convertidos para TypeScript e usam `tsx`, que é multiplataforma:
+
+```bash
+# Seed básico (usuários, perfis, permissões)
+npm run db:seed:win
+
+# Seed completo (inclui aplicações e programas de crédito)
+npm run db:seed-all:win
+
+# Seeds específicos
+npm run db:seed-applications:win     # Apenas aplicações de crédito
+npm run db:seed-credit-programs:win  # Apenas programas de crédito
+```
+
+**Nota:** Os scripts `:win` são idênticos aos normais, mas estão disponíveis para consistência com os outros comandos Windows.
+
 ## 🔧 Resolução de Problemas
 
+### **Erro: "cross-env não é reconhecido"**
+✅ **Resolvido!** Use os scripts específicos para Windows (`npm run dev:win`) ou os scripts PowerShell/Batch.
+
 ### **Erro: "NODE_ENV não é reconhecido"**
-✅ **Resolvido!** Agora usamos `cross-env` para compatibilidade com Windows.
+✅ **Resolvido!** Os scripts Windows usam `set NODE_ENV` em vez de `cross-env`.
 
 ### **Erro: "rm não é reconhecido"**
 ✅ **Resolvido!** Agora usamos `rimraf` para comandos de limpeza.
