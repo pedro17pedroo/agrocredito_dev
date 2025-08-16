@@ -1,0 +1,212 @@
+name: CI/CD Pipeline - AgroCrédito
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+env:
+  NODE_VERSION: '18'
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # Job de testes e validação
+  test:
+    name: Testes e Validação
+    runs-on: ubuntu-latest
+    
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root_test
+          MYSQL_DATABASE: agrocredito_test
+          MYSQL_USER: test_user
+          MYSQL_PASSWORD: test_password
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+    
+    steps:
+    - name: Checkout código
+      uses: actions/checkout@v4
+    
+    - name: Configurar Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+    
+    - name: Instalar dependências
+      run: npm ci
+    
+    - name: Verificar tipos TypeScript
+      run: npm run check
+    
+    - name: Configurar variáveis de ambiente para testes
+      run: |
+        echo "DATABASE_URL=mysql://test_user:test_password@localhost:3306/agrocredito_test" >> .env
+        echo "JWT_SECRET=test-secret-key" >> .env
+        echo "NODE_ENV=test" >> .env
+        echo "PORT=5000" >> .env
+    
+    - name: Aguardar MySQL
+      run: |
+        until mysqladmin ping -h localhost -P 3306 -u test_user -ptest_password --silent; do
+          echo 'Aguardando MySQL...'
+          sleep 2
+        done
+    
+    - name: Executar migrações de teste
+      run: npm run db:push
+    
+    - name: Compilar aplicação
+      run: npm run build
+    
+    - name: Executar testes (se existirem)
+      run: |
+        if [ -f "package.json" ] && grep -q '"test"' package.json; then
+          npm test
+        else
+          echo "Nenhum teste configurado"
+        fi
+
+  # Job de build da imagem Docker
+  build:
+    name: Build Docker Image
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.event_name == 'push'
+    
+    permissions:
+      contents: read
+      packages: write
+    
+    steps:
+    - name: Checkout código
+      uses: actions/checkout@v4
+    
+    - name: Configurar Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Login no Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Extrair metadados
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=sha,prefix={{branch}}-
+          type=raw,value=latest,enable={{is_default_branch}}
+    
+    - name: Build e push da imagem Docker
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        platforms: linux/amd64,linux/arm64
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+  # Job de deploy para staging
+  deploy-staging:
+    name: Deploy para Staging
+    runs-on: ubuntu-latest
+    needs: [test, build]
+    if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
+    
+    environment:
+      name: staging
+      url: https://staging.agrocredito.ao
+    
+    steps:
+    - name: Checkout código
+      uses: actions/checkout@v4
+    
+    - name: Deploy para staging
+      uses: appleboy/ssh-action@v1.0.0
+      with:
+        host: ${{ secrets.STAGING_HOST }}
+        username: ${{ secrets.STAGING_USER }}
+        key: ${{ secrets.STAGING_SSH_KEY }}
+        script: |
+          cd /var/www/agrocredito-staging
+          git pull origin develop
+          npm ci --production
+          npm run build
+          npm run db:push
+          pm2 reload ecosystem.config.js --env staging
+
+  # Job de deploy para produção
+  deploy-production:
+    name: Deploy para Produção
+    runs-on: ubuntu-latest
+    needs: [test, build]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
+    environment:
+      name: production
+      url: https://agrocredito.ao
+    
+    steps:
+    - name: Checkout código
+      uses: actions/checkout@v4
+    
+    - name: Deploy para produção
+      uses: appleboy/ssh-action@v1.0.0
+      with:
+        host: ${{ secrets.PRODUCTION_HOST }}
+        username: ${{ secrets.PRODUCTION_USER }}
+        key: ${{ secrets.PRODUCTION_SSH_KEY }}
+        script: |
+          cd /var/www/agrocredito
+          
+          # Criar backup
+          sudo cp -r /var/www/agrocredito /var/backups/agrocredito/backup_$(date +%Y%m%d_%H%M%S)
+          
+          # Atualizar código
+          git pull origin main
+          npm ci --production
+          npm run build
+          
+          # Executar migrações
+          npm run db:push
+          
+          # Reiniciar aplicação
+          pm2 reload ecosystem.config.js --env production
+          
+          # Verificar saúde
+          sleep 10
+          curl -f http://localhost:5000/api/health || exit 1
+
+  # Job de notificação
+  notify:
+    name: Notificações
+    runs-on: ubuntu-latest
+    needs: [deploy-staging, deploy-production]
+    if: always()
+    
+    steps:
+    - name: Notificar sucesso
+      if: needs.deploy-production.result == 'success' || needs.deploy-staging.result == 'success'
+      run: |
+        echo "✅ Deploy realizado com sucesso!"
+        # Aqui pode adicionar notificações para Slack, Discord, etc.
+    
+    - name: Notificar falha
+      if: needs.deploy-production.result == 'failure' || needs.deploy-staging.result == 'failure'
+      run: |
+        echo "❌ Deploy falhou!"
+        # Aqui pode adicionar notificações de erro
