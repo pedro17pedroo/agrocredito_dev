@@ -34,7 +34,7 @@ function listBackups() {
         name: file,
         path: filePath,
         size: (stats.size / (1024 * 1024)).toFixed(2),
-        date: stats.mtime.toLocaleString('pt-AO')
+        date: stats.mtime.toLocaleString('pt-PT')
       };
     })
     .sort((a, b) => fs.statSync(b.path).mtime - fs.statSync(a.path).mtime);
@@ -112,7 +112,7 @@ async function executeSqlCommands(connection: mysql.Connection, sqlContent: stri
 // Função principal
 async function main() {
   const args = process.argv.slice(2);
-  let backupFile: string;
+  let backupFile: string = '';
 
   if (args.length > 0) {
     // Arquivo especificado como argumento
@@ -193,7 +193,7 @@ async function main() {
     process.exit(1);
   } finally {
     // Fechar conexão
-    if (connection!) {
+    if (connection) {
       await connection.end();
       console.log('🔌 Conexão fechada.');
     }

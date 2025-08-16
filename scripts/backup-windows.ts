@@ -64,7 +64,7 @@ async function getTableData(connection: mysql.Connection, tableName: string): Pr
       const value = row[col];
       if (value === null) return 'NULL';
       if (typeof value === 'string') {
-        return `'${value.replace(/'/g, "\\'").replace(/\\/g, '\\\\')}'`;
+        return `'${value.replace(/'/g, "''").replace(/\\/g, '\\\\')}'`;
       }
       if (value instanceof Date) {
         return `'${value.toISOString().slice(0, 19).replace('T', ' ')}'`;
