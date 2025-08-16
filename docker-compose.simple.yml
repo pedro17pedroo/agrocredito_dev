@@ -27,6 +27,26 @@ services:
       retries: 5
       start_period: 30s
 
+  # Migração e Seeds
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile.simple
+    container_name: agrocredito-migrate
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=mysql://agrocredito:password123@db:3306/agrocredito
+    volumes:
+      - .:/app
+      - /app/node_modules
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - agrocredito-network
+    command: sh -c "npm run db:push && npm run db:seed"
+    restart: "no"
+
   # Aplicação AgroCrédito
   app:
     build:
@@ -52,6 +72,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     networks:
       - agrocredito-network
     command: npm run dev

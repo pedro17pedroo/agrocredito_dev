@@ -68,7 +68,11 @@ export async function createTestAccount() {
       nextPaymentDate,
     };
 
-    const [newAccount] = await db.insert(accounts).values(accountData).returning();
+    await db.insert(accounts).values(accountData);
+    console.log(`✅ Conta criada para a aplicação: ${approvedApplication.projectName}`);
+    
+    // Para fins de notificação, vamos usar os dados que inserimos
+    const newAccount = accountData;
 
     // Criar notificação de aprovação
     const notificationData: InsertNotification = {
@@ -76,7 +80,7 @@ export async function createTestAccount() {
       type: "application_approved",
       title: "Conta Criada!",
       message: `Conta criada para "${approvedApplication.projectName}". Primeira parcela vence em 30 dias.`,
-      relatedId: newAccount.id,
+      relatedId: approvedApplication.id,
     };
 
     await db.insert(notifications).values(notificationData);
