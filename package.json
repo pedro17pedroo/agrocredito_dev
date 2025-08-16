@@ -31,6 +31,8 @@
     "db:seed-applications:win": "tsx scripts/seed-applications.ts",
     "db:seed-all": "tsx server/run-all-seeds.ts",
     "db:seed-all:win": "tsx server/run-all-seeds.ts",
+    "db:test": "tsx scripts/test-db-connection.ts",
+    "db:test:win": "tsx scripts/test-db-connection.ts",
     "docker:build": "docker build -t agrocredito .",
     "docker:run": "docker run -p 5000:5000 --env-file .env agrocredito",
     "docker:dev": "docker-compose -f docker-compose.yml -f docker-compose.dev.yml up --build",

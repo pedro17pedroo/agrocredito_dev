@@ -208,7 +208,62 @@ npm run db:seed-credit-programs:win  # Apenas programas de crédito
 
 **Nota:** Os scripts `:win` são idênticos aos normais, mas estão disponíveis para consistência com os outros comandos Windows.
 
+### **Diagnóstico de Problemas de Seed**
+Se os seeds não estiverem a funcionar, use o script de diagnóstico:
+
+```powershell
+# Script de diagnóstico completo
+.\scripts\debug-seeds-windows.ps1
+
+# Ou teste apenas a conexão
+npm run db:test:win
+```
+
+**Passos para resolver problemas de seed:**
+1. **Verificar se o MySQL está a executar:**
+   ```bash
+   # Para Docker
+   docker-compose -f docker-compose.simple.yml up -d
+   
+   # Verificar containers
+   docker ps
+   ```
+
+2. **Verificar configuração do .env:**
+   ```bash
+   # Deve conter DATABASE_URL válida
+   DATABASE_URL="mysql://root:root@localhost:3306/agrocredito"
+   ```
+
+3. **Criar/atualizar tabelas:**
+   ```bash
+   npm run db:push
+   ```
+
+4. **Executar seeds:**
+   ```bash
+   npm run db:seed:win
+   ```
+
 ## 🔧 Resolução de Problemas
+
+### **Erro: "Seeds executam mas não mostram output"**
+✅ **Solução:** Este é um comportamento normal quando os dados já existem na base de dados.
+
+**Diagnóstico:**
+```powershell
+# Execute o diagnóstico completo
+.\scripts\debug-seeds-windows.ps1
+
+# Ou teste a conexão
+npm run db:test:win
+```
+
+**Possíveis causas:**
+- Base de dados não está a executar
+- Credenciais incorretas no .env
+- Tabelas não foram criadas (`npm run db:push`)
+- Dados já existem (comportamento normal)
 
 ### **Erro: "cross-env não é reconhecido"**
 ✅ **Resolvido!** Use os scripts específicos para Windows (`npm run dev:win`) ou os scripts PowerShell/Batch.
