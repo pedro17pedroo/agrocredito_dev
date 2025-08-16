@@ -11,7 +11,7 @@ const DB_HOST = process.env.DB_HOST || 'localhost';
 const DB_PORT = process.env.DB_PORT || '3306';
 const DB_NAME = process.env.DB_NAME || 'agrocredito_dev';
 const DB_USER = process.env.DB_USER || 'root';
-const DB_PASSWORD = process.env.DB_PASSWORD || 'root';
+const DB_PASSWORD = process.env.DB_PASSWORD || '2003';
 
 // Configurações do restore
 const BACKUP_DIR = path.join(process.cwd(), 'backups');

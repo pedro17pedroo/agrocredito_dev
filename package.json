@@ -44,6 +44,7 @@
     "setup": "node scripts/setup.js",
     "backup": "node scripts/backup.js",
     "restore": "node scripts/restore.js",
+    "restore:local": "powershell -ExecutionPolicy Bypass -File scripts/restore-local.ps1",
     "deploy": "node scripts/deploy.js",
     "pm2:start": "pm2 start ecosystem.config.js --env production",
     "pm2:stop": "pm2 stop agrocredito",
