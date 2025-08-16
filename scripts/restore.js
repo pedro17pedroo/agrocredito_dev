@@ -5,11 +5,13 @@
  * Compatível com Windows, macOS e Linux
  */
 
-const { execSync } = require('child_process');
-const fs = require('fs');
-const path = require('path');
-const readline = require('readline');
-require('dotenv').config();
+import { execSync } from 'child_process';
+import fs from 'fs';
+import path from 'path';
+import readline from 'readline';
+import { config } from 'dotenv';
+
+config();
 
 // Configurações da base de dados
 const DB_HOST = process.env.DB_HOST || 'localhost';

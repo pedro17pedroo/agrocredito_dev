@@ -5,10 +5,12 @@
  * Compatível com Windows, macOS e Linux
  */
 
-const { execSync } = require('child_process');
-const fs = require('fs');
-const path = require('path');
-require('dotenv').config();
+import { execSync } from 'child_process';
+import fs from 'fs';
+import path from 'path';
+import { config } from 'dotenv';
+
+config();
 
 // Configurações da base de dados
 const DB_HOST = process.env.DB_HOST || 'localhost';
@@ -81,7 +83,7 @@ try {
   try {
     const dockerCmd = [
       'docker exec',
-      'agrocredito-mysql',
+      'agrocredito-db-simple',
       'mysqldump',
       `--user=${DB_USER}`,
       DB_PASSWORD ? `--password=${DB_PASSWORD}` : '',
