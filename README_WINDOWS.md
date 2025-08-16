@@ -208,6 +208,31 @@ npm run db:seed-credit-programs:win  # Apenas programas de crédito
 
 **Nota:** Os scripts `:win` são idênticos aos normais, mas estão disponíveis para consistência com os outros comandos Windows.
 
+### **Backup e Restore no Windows**
+✅ **Solução:** Scripts específicos para Windows que **não precisam do cliente MySQL**!
+
+```powershell
+# Criar backup da base de dados
+npm run backup:win
+
+# Restaurar backup (usa o mais recente)
+npm run restore:win
+
+# Restaurar backup específico
+npm run restore:win nome-do-backup.sql
+
+# Testar conexão com a base de dados
+npm run db:test:win
+```
+
+**Vantagens dos Scripts Windows:**
+- ✅ **Não precisam do cliente MySQL** instalado
+- ✅ **Usam Node.js e mysql2** (já instalados)
+- ✅ **Funcionam com MySQL local** (não Docker)
+- ✅ **Mostram progresso detalhado**
+- ✅ **Tratamento de erros melhorado**
+- ✅ **Compatíveis com Windows PowerShell**
+
 ### **Diagnóstico de Problemas de Seed**
 Se os seeds não estiverem a funcionar, use o script de diagnóstico:
 
