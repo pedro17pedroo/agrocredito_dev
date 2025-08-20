@@ -141,7 +141,12 @@ async function main() {
     if (args.length > 0 && !args[0].startsWith('--')) {
       console.log('📁 Modo: arquivo especificado como argumento');
       // Arquivo especificado como argumento
-      backupFile = args[0];
+      const argFile = args[0];
+      if (!argFile) {
+        console.error('❌ Argumento de arquivo inválido.');
+        process.exit(1);
+      }
+      backupFile = argFile;
       if (!path.isAbsolute(backupFile)) {
         backupFile = path.join(BACKUP_DIR, backupFile);
       }
@@ -238,7 +243,7 @@ async function main() {
       process.exit(1);
     } finally {
       // Fechar conexão
-      if (connection!) {
+      if (connection) {
         await connection.end();
         console.log('🔌 Conexão fechada.');
       }
