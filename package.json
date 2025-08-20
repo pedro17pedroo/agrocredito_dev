@@ -34,6 +34,8 @@
     "db:test": "tsx scripts/test-db-connection.ts",
     "db:test:win": "tsx scripts/test-db-connection.ts",
     "restore:win": "tsx scripts/restore-windows.ts",
+    "restore:win:force": "tsx scripts/restore-windows.ts --force",
+    "debug:win": "tsx scripts/debug-windows.ts",
     "backup:win": "tsx scripts/backup-windows.ts",
     "docker:build": "docker build -t agrocredito .",
     "docker:run": "docker run -p 5000:5000 --env-file .env agrocredito",

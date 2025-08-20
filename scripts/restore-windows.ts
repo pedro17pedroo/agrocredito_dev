@@ -47,7 +47,7 @@ function listBackups() {
   return backupFiles;
 }
 
-// Função para pedir confirmação
+// Função para pedir confirmação (compatível com Windows)
 function askConfirmation(question: string): Promise<boolean> {
   const rl = readline.createInterface({
     input: process.stdin,
@@ -55,9 +55,13 @@ function askConfirmation(question: string): Promise<boolean> {
   });
 
   return new Promise((resolve) => {
-    rl.question(question, (answer) => {
+    console.log(question);
+    console.log('💡 Digite "s" ou "sim" para confirmar, qualquer outra tecla para cancelar.');
+    
+    rl.question('> ', (answer) => {
       rl.close();
-      resolve(answer.toLowerCase() === 's' || answer.toLowerCase() === 'sim');
+      const confirmed = answer.toLowerCase() === 's' || answer.toLowerCase() === 'sim' || answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes';
+      resolve(confirmed);
     });
   });
 }
@@ -141,13 +145,20 @@ async function main() {
     console.log(`🎯 Backup mais recente selecionado: ${backups[0].name}`);
   }
 
-  // Confirmar ação
-  console.log(`\n⚠️ ATENÇÃO: Esta ação irá substituir todos os dados atuais da base de dados '${DB_NAME}'.`);
-  const confirmed = await askConfirmation('Tem certeza que deseja continuar? (s/N): ');
+  // Verificar se é execução automática (com argumento --force)
+  const forceMode = args.includes('--force') || process.env.RESTORE_FORCE === 'true';
   
-  if (!confirmed) {
-    console.log('❌ Operação cancelada pelo utilizador.');
-    process.exit(0);
+  if (!forceMode) {
+    // Confirmar ação
+    console.log(`\n⚠️ ATENÇÃO: Esta ação irá substituir todos os dados atuais da base de dados '${DB_NAME}'.`);
+    const confirmed = await askConfirmation('Tem certeza que deseja continuar?');
+    
+    if (!confirmed) {
+      console.log('❌ Operação cancelada pelo utilizador.');
+      process.exit(0);
+    }
+  } else {
+    console.log('🚀 Modo automático ativado (--force). Prosseguindo sem confirmação...');
   }
 
   // Criar conexão com a base de dados
