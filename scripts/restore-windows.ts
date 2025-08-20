@@ -37,7 +37,7 @@ function listBackups() {
         date: stats.mtime.toLocaleString('pt-PT')
       };
     })
-    .sort((a, b) => fs.statSync(b.path).mtime - fs.statSync(a.path).mtime);
+    .sort((a, b) => fs.statSync(b.path).mtime.getTime() - fs.statSync(a.path).mtime.getTime());
 
   if (backupFiles.length === 0) {
     console.error('❌ Nenhum backup encontrado na pasta backups/');
@@ -55,12 +55,14 @@ function askConfirmation(question: string): Promise<boolean> {
   });
 
   return new Promise((resolve) => {
-    console.log(question);
+    console.log('\n' + question);
     console.log('💡 Digite "s" ou "sim" para confirmar, qualquer outra tecla para cancelar.');
+    console.log('⚠️ Pressione ENTER após digitar sua resposta.');
     
-    rl.question('> ', (answer) => {
+    rl.question('\n> ', (answer) => {
       rl.close();
       const confirmed = answer.toLowerCase() === 's' || answer.toLowerCase() === 'sim' || answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes';
+      console.log(`\n📝 Resposta recebida: "${answer}" -> ${confirmed ? 'CONFIRMADO' : 'CANCELADO'}`);
       resolve(confirmed);
     });
   });
@@ -115,10 +117,13 @@ async function executeSqlCommands(connection: mysql.Connection, sqlContent: stri
 
 // Função principal
 async function main() {
+  console.log('🚀 Iniciando função main...');
   const args = process.argv.slice(2);
-  let backupFile: string = '';
+  console.log(`📋 Argumentos recebidos: ${args.length > 0 ? args.join(', ') : 'nenhum'}`);
+  let backupFile: string;
 
   if (args.length > 0) {
+    console.log('📁 Modo: arquivo especificado como argumento');
     // Arquivo especificado como argumento
     backupFile = args[0];
     if (!path.isAbsolute(backupFile)) {
@@ -130,6 +135,7 @@ async function main() {
       process.exit(1);
     }
   } else {
+    console.log('📁 Modo: selecionar backup mais recente automaticamente');
     // Listar backups disponíveis
     const backups = listBackups();
     
@@ -141,14 +147,23 @@ async function main() {
     });
     
     // Usar o backup mais recente por padrão
-    backupFile = backups[0].path;
-    console.log(`🎯 Backup mais recente selecionado: ${backups[0].name}`);
+    if (backups.length > 0) {
+      backupFile = backups[0].path;
+      console.log(`🎯 Backup mais recente selecionado: ${backups[0].name}`);
+    } else {
+      console.error('❌ Nenhum backup encontrado.');
+      process.exit(1);
+    }
   }
 
+  console.log(`📄 Arquivo de backup selecionado: ${path.basename(backupFile)}`);
+  
   // Verificar se é execução automática (com argumento --force)
   const forceMode = args.includes('--force') || process.env.RESTORE_FORCE === 'true';
+  console.log(`🔧 Modo força: ${forceMode ? 'ATIVADO' : 'DESATIVADO'}`);
   
   if (!forceMode) {
+    console.log('❓ Solicitando confirmação do utilizador...');
     // Confirmar ação
     console.log(`\n⚠️ ATENÇÃO: Esta ação irá substituir todos os dados atuais da base de dados '${DB_NAME}'.`);
     const confirmed = await askConfirmation('Tem certeza que deseja continuar?');
@@ -160,9 +175,11 @@ async function main() {
   } else {
     console.log('🚀 Modo automático ativado (--force). Prosseguindo sem confirmação...');
   }
+  
+  console.log('🔄 Prosseguindo para conexão com a base de dados...');
 
   // Criar conexão com a base de dados
-  let connection: mysql.Connection;
+  let connection: mysql.Connection | undefined;
   
   try {
     console.log('🔗 Conectando à base de dados...');
