@@ -272,6 +272,23 @@ npm run db:test:win
 
 ## 🔧 Resolução de Problemas
 
+### **🔧 Guia Completo de Resolução**
+Para problemas detalhados, consulte: **[TROUBLESHOOTING_WINDOWS.md](./TROUBLESHOOTING_WINDOWS.md)**
+
+### **🚨 Problemas Mais Comuns**
+
+#### **Scripts param ou não respondem**
+```bash
+# Diagnóstico completo
+npm run debug:win
+
+# Restore melhorado
+npm run restore:win:v2:force
+
+# Teste de entrada
+npm run test:input:win
+```
+
 ### **⚠️ Conflito entre MySQL Local e Docker**
 
 **Problema:** Seeds não funcionam ou mostram erro "Access denied" com IP 172.x.x.x
@@ -319,6 +336,30 @@ npm run db:test:win
 - Tabelas não foram criadas (`npm run db:push`)
 - Dados já existem (comportamento normal)
 - **Conflito com Docker MySQL** (ver secção acima)
+
+#### **Erro: "mysql client not found"**
+- **Solução:** Use os scripts específicos para Windows:
+  ```bash
+  npm run backup:win
+  npm run restore:win:v2
+  ```
+
+#### **Erro: "Access denied for user"**
+- **Solução:** Verifique as credenciais no arquivo `.env`
+- **Alternativa:** Use Docker que configura automaticamente
+
+#### **Erro: "Database does not exist"**
+- **Solução:** Crie a base de dados manualmente:
+  ```sql
+  CREATE DATABASE agrocredito_dev;
+  ```
+
+#### **Seeds não executam**
+- **Solução:** Execute as migrações primeiro:
+  ```bash
+  npm run db:migrate
+  npm run db:seed-all:win
+  ```
 
 ### **Erro: "cross-env não é reconhecido"**
 ✅ **Resolvido!** Use os scripts específicos para Windows (`npm run dev:win`) ou os scripts PowerShell/Batch.
