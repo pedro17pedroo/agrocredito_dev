@@ -1,7 +1,10 @@
+import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { formatKwanza } from "@/lib/angola-utils";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
+import { Badge } from "../ui/badge";
+import { formatKwanza } from "../../lib/angola-utils";
+import { useCreditApplications } from "../../contexts/CreditApplicationContext";
+import type { CreditApplication, Account } from "../../../shared/schema";
 import { 
   BarChart3, 
   TrendingUp, 
@@ -12,13 +15,24 @@ import {
 } from "lucide-react";
 
 export default function FinancialReports() {
-  // Query for applications data
-  const { data: applicationsData } = useQuery({
+  const { applications, loading, fetchApplications } = useCreditApplications();
+
+  // Carregar aplicações quando o componente é montado
+  useEffect(() => {
+    fetchApplications();
+  }, [fetchApplications]);
+
+  // Query for applications data (mantido para compatibilidade com admin)
+  const { data: applicationsData } = useQuery<{
+    new: CreditApplication[];
+    underReview: CreditApplication[];
+    historical: CreditApplication[];
+  }>({
     queryKey: ["/api/admin/credit-applications"],
   });
 
   // Query for accounts data
-  const { data: accounts = [] } = useQuery({
+  const { data: accounts = [] } = useQuery<Account[]>({
     queryKey: ["/api/admin/accounts"],
   });
 
@@ -34,11 +48,11 @@ export default function FinancialReports() {
   const approvalRate = totalApplications > 0 ? ((approvedApplications / totalApplications) * 100).toFixed(1) : '0';
   
   const totalValueRequested = allApplications.reduce((sum, app) => sum + parseFloat(app.amount), 0);
-  const totalValueApproved = accounts.reduce((sum, acc) => sum + parseFloat(acc.totalAmount), 0);
-  const totalOutstanding = accounts.reduce((sum, acc) => sum + parseFloat(acc.outstandingBalance), 0);
+  const totalValueApproved = accounts.reduce((sum: number, acc: Account) => sum + parseFloat(acc.totalAmount), 0);
+  const totalOutstanding = accounts.reduce((sum: number, acc: Account) => sum + parseFloat(acc.outstandingBalance), 0);
 
   // Project type distribution
-  const projectTypes = allApplications.reduce((acc, app) => {
+  const projectTypes = allApplications.reduce((acc: Record<string, number>, app: CreditApplication) => {
     acc[app.projectType] = (acc[app.projectType] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);

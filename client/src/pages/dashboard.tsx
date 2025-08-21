@@ -1,15 +1,16 @@
-import { useAuth, useLogout } from "@/hooks/use-auth";
+import { useAuth, useLogout } from "../hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
 import { Sprout, Plus, Calculator, Download, LogOut } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button } from "../components/ui/button";
 import { Link, useLocation } from "wouter";
-import { PermissionGate } from "@/components/PermissionGate";
-import StatsCards from "@/components/dashboard/stats-cards";
-import ApplicationsList from "@/components/dashboard/applications-list";
-import NotificationCenter from "@/components/notifications/notification-center";
-import { formatKwanza } from "@/lib/angola-utils";
-import type { CreditApplication, Account } from "@shared/schema";
+import { PermissionGate } from "../components/PermissionGate";
+import StatsCards from "../components/dashboard/stats-cards";
+import ApplicationsList from "../components/dashboard/applications-list";
+import NotificationCenter from "../components/notifications/notification-center";
+import { formatKwanza } from "../lib/angola-utils";
+import type { CreditApplication, Account } from "../../../shared/schema";
 import { useEffect } from "react";
+import { useCreditApplications } from "../contexts/CreditApplicationContext";
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -23,9 +24,14 @@ export default function Dashboard() {
     }
   }, [user, setLocation]);
 
-  const { data: applications = [], isLoading: applicationsLoading } = useQuery<CreditApplication[]>({
-    queryKey: ["/api/credit-applications/user"],
-  });
+  const { applications, loading: applicationsLoading, fetchApplications } = useCreditApplications();
+
+  // Carregar aplicações quando o componente monta
+  useEffect(() => {
+    if (user) {
+      fetchApplications();
+    }
+  }, [user, fetchApplications]);
 
   const { data: accounts = [], isLoading: accountsLoading } = useQuery<Account[]>({
     queryKey: ["/api/accounts/user"],

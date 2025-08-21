@@ -1,8 +1,8 @@
 import { CreditCard, Calendar, FileText, TrendingUp } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
-import { formatKwanza } from "@/lib/angola-utils";
-import type { CreditApplication, Account } from "@shared/schema";
+import { Card, CardContent } from "../ui/card";
+import { Skeleton } from "../ui/skeleton";
+import { formatKwanza } from "../../lib/angola-utils";
+import type { CreditApplication, Account } from "../../../../shared/schema";
 
 interface StatsCardsProps {
   applications: CreditApplication[];

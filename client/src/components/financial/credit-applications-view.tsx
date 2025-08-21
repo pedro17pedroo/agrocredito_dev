@@ -1,15 +1,16 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { useToast } from "@/hooks/use-toast";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
-import { Separator } from "@/components/ui/separator";
-import { formatKwanza, formatDate } from "@/lib/angola-utils";
+import { useToast } from "../../hooks/use-toast";
+import { Button } from "../ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
+import { Badge } from "../ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../ui/dialog";
+import { Textarea } from "../ui/textarea";
+import { Separator } from "../ui/separator";
+import { formatKwanza, formatDate } from "../../lib/angola-utils";
+import { useCreditApplications } from "../../contexts/CreditApplicationContext";
 import { 
   Eye, 
   Check, 
@@ -25,7 +26,7 @@ import {
   Calendar,
   Settings
 } from "lucide-react";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest } from "../../lib/queryClient";
 
 interface CreditApplication {
   id: string;
@@ -81,15 +82,16 @@ export default function CreditApplicationsView() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
+  const { applications, loading, fetchApplications, updateApplication } = useCreditApplications();
   
   const [selectedApplication, setSelectedApplication] = useState<CreditApplication | null>(null);
   const [showApplicationDetails, setShowApplicationDetails] = useState(false);
   const [rejectionReason, setRejectionReason] = useState("");
 
-  // Query for credit applications
-  const { data: applicationsData, isLoading: applicationsLoading } = useQuery<ApplicationsData>({
-    queryKey: ["/api/admin/credit-applications"],
-  });
+  // Carregar aplicações quando o componente é montado
+  useEffect(() => {
+    fetchApplications();
+  }, [fetchApplications]);
 
   // Query for accounts (approved credits)
   const { data: accounts = [], isLoading: accountsLoading } = useQuery<Account[]>({
@@ -108,9 +110,17 @@ export default function CreditApplicationsView() {
         rejectionReason,
       });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/credit-applications"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/accounts"] });
+    onSuccess: (response, variables) => {
+      // Atualizar no contexto reativo
+      updateApplication(variables.id, {
+        status: variables.status as "pending" | "under_review" | "approved" | "rejected",
+        rejectionReason: variables.rejectionReason,
+        updatedAt: new Date().toISOString()
+      });
+      
+      // Recarregar aplicações para garantir sincronização
+      fetchApplications();
+      
       setShowApplicationDetails(false);
       setSelectedApplication(null);
       setRejectionReason("");
@@ -128,7 +138,7 @@ export default function CreditApplicationsView() {
     },
   });
 
-  if (applicationsLoading || accountsLoading) {
+  if (loading || accountsLoading) {
     return (
       <div className="flex items-center justify-center p-8">
         <div className="text-center">
@@ -139,9 +149,10 @@ export default function CreditApplicationsView() {
     );
   }
 
-  const newApplications = applicationsData?.new || [];
-  const underReviewApplications = applicationsData?.underReview || [];
-  const historicalApplications = applicationsData?.historical || [];
+  // Usar dados do contexto reativo
+  const newApplications = applications.filter(app => app.status === 'pending');
+  const underReviewApplications = applications.filter(app => app.status === 'under_review');
+  const historicalApplications = applications.filter(app => app.status === 'approved' || app.status === 'rejected');
   const approvedCredits = accounts;
 
   const statusLabels = {
@@ -313,13 +324,14 @@ export default function CreditApplicationsView() {
                             Ver Detalhes
                           </Button>
                           <Button
-                            variant="default"
+                            variant="outline"
                             size="sm"
                             onClick={() => handleStartReview(application)}
                             disabled={updateApplicationStatus.isPending}
+                            className="bg-white hover:bg-gray-50 border-gray-300"
                           >
                             <Clock className="h-4 w-4 mr-1" />
-                            Analisar
+                            Iniciar Análise
                           </Button>
                         </div>
                       </div>
@@ -374,6 +386,18 @@ export default function CreditApplicationsView() {
                           >
                             <Eye className="h-4 w-4 mr-1" />
                             Ver Detalhes
+                          </Button>
+                          <Button
+                            variant="default"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedApplication(application);
+                              setShowApplicationDetails(true);
+                            }}
+                            className="bg-green-600 hover:bg-green-700 text-white"
+                          >
+                            <Check className="h-4 w-4 mr-1" />
+                            Terminar Análise
                           </Button>
                         </div>
                       </div>
@@ -1072,49 +1096,53 @@ export default function CreditApplicationsView() {
                 {selectedApplication.status === 'pending' || selectedApplication.status === 'under_review' ? (
                   <div className="space-y-4">
                     {/* Aprovar */}
-                    <button 
+                    <Button 
                       onClick={() => selectedApplication && handleApprove(selectedApplication)}
                       disabled={updateApplicationStatus.isPending}
-                      className="flex flex-col items-center p-6 bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 rounded-lg hover:from-green-100 hover:to-emerald-100 transition-all duration-200 group disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="w-full bg-green-600 hover:bg-green-700 text-white py-6 h-auto flex flex-col items-center gap-2"
                     >
-                      <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mb-3 group-hover:bg-green-200 transition-colors">
-                        <Check className="w-6 h-6 text-green-600" />
+                      <Check className="w-6 h-6" />
+                      <div className="text-center">
+                        <div className="font-semibold">Aprovar</div>
+                        <div className="text-sm opacity-90">Aprovar solicitação de crédito</div>
                       </div>
-                      <h4 className="font-semibold text-green-900 mb-1">Aprovar</h4>
-                      <p className="text-sm text-green-700 text-center">Aprovar solicitação de crédito</p>
-                    </button>
+                    </Button>
 
-                    {/* Colocar em Análise */}
+                    {/* Colocar em Análise - apenas para status pending */}
                     {selectedApplication.status === 'pending' && (
-                      <button 
+                      <Button 
                         onClick={() => selectedApplication && handleStartReview(selectedApplication)}
                         disabled={updateApplicationStatus.isPending}
-                        className="flex flex-col items-center p-6 bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-lg hover:from-blue-100 hover:to-indigo-100 transition-all duration-200 group disabled:opacity-50 disabled:cursor-not-allowed"
+                        variant="outline"
+                        className="w-full bg-white hover:bg-gray-50 border-gray-300 py-6 h-auto flex flex-col items-center gap-2"
                       >
-                        <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-3 group-hover:bg-blue-200 transition-colors">
-                          <Eye className="w-6 h-6 text-blue-600" />
+                        <Eye className="w-6 h-6 text-gray-600" />
+                        <div className="text-center">
+                          <div className="font-semibold text-gray-900">Iniciar Análise</div>
+                          <div className="text-sm text-gray-700">Colocar em análise detalhada</div>
                         </div>
-                        <h4 className="font-semibold text-blue-900 mb-1">Em Análise</h4>
-                        <p className="text-sm text-blue-700 text-center">Colocar em análise detalhada</p>
-                      </button>
+                      </Button>
                     )}
 
-                    {/* Recusar */}
-                    <div className="flex flex-col">
-                      <button 
-                        onClick={() => selectedApplication && handleReject(selectedApplication)}
-                        disabled={updateApplicationStatus.isPending || !rejectionReason.trim()}
-                        className="flex flex-col items-center p-6 bg-gradient-to-br from-red-50 to-rose-50 border border-red-200 rounded-lg hover:from-red-100 hover:to-rose-100 transition-all duration-200 group disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-3 group-hover:bg-red-200 transition-colors">
-                          <X className="w-6 h-6 text-red-600" />
+                    {/* Status da análise - apenas para status under_review */}
+                    {selectedApplication.status === 'under_review' && (
+                      <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                            <Clock className="w-4 h-4 text-blue-600" />
+                          </div>
+                          <div>
+                            <h4 className="font-semibold text-blue-900">Em Análise</h4>
+                            <p className="text-sm text-blue-700">Esta solicitação está sendo analisada. Você pode aprová-la ou rejeitá-la.</p>
+                          </div>
                         </div>
-                        <h4 className="font-semibold text-red-900 mb-1">Recusar</h4>
-                        <p className="text-sm text-red-700 text-center">Recusar solicitação</p>
-                      </button>
-                      
-                      {/* Campo de motivo da rejeição */}
-                      <div className="mt-4">
+                      </div>
+                    )}
+
+                    {/* Campo de motivo da rejeição */}
+                    <div className="space-y-4">
+                      <div>
+                        <label className="text-sm font-medium text-gray-700 mb-2 block">Motivo da rejeição (obrigatório para rejeitar)</label>
                         <Textarea
                           placeholder="Indique o motivo da rejeição..."
                           value={rejectionReason}
@@ -1122,6 +1150,20 @@ export default function CreditApplicationsView() {
                           className="min-h-20 text-sm"
                         />
                       </div>
+                      
+                      {/* Recusar */}
+                      <Button 
+                        onClick={() => selectedApplication && handleReject(selectedApplication)}
+                        disabled={updateApplicationStatus.isPending || !rejectionReason.trim()}
+                        variant="destructive"
+                        className="w-full py-6 h-auto flex flex-col items-center gap-2"
+                      >
+                        <X className="w-6 h-6" />
+                        <div className="text-center">
+                          <div className="font-semibold">Rejeitar</div>
+                          <div className="text-sm opacity-90">Rejeitar solicitação de crédito</div>
+                        </div>
+                      </Button>
                     </div>
                   </div>
                 ) : (

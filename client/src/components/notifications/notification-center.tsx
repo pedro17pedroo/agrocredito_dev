@@ -1,13 +1,11 @@
 import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Bell, Check, X, Clock, CreditCard, FileText, AlertCircle } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
+import { Button } from "../ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
+import { Badge } from "../ui/badge";
+import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
+import { ScrollArea } from "../ui/scroll-area";
+import { useNotifications } from "../../hooks/use-notifications";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -24,38 +22,15 @@ interface Notification {
 
 export default function NotificationCenter() {
   const [isOpen, setIsOpen] = useState(false);
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
-
-  const { data: notifications = [], isLoading } = useQuery<Notification[]>({
-    queryKey: ["/api/notifications"],
-  });
-
-  const markAsRead = useMutation({
-    mutationFn: async (notificationId: string) => {
-      const response = await apiRequest("PATCH", `/api/notifications/${notificationId}/read`);
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
-    },
-  });
-
-  const markAllAsRead = useMutation({
-    mutationFn: async () => {
-      const response = await apiRequest("PATCH", "/api/notifications/mark-all-read");
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
-      toast({
-        title: "Notificações marcadas como lidas",
-        description: "Todas as notificações foram marcadas como lidas.",
-      });
-    },
-  });
-
-  const unreadCount = notifications.filter(n => !n.isRead).length;
+  const {
+    notifications,
+    isLoading,
+    unreadCount,
+    markAsRead,
+    markAllAsRead,
+    isMarkingAsRead,
+    isMarkingAllAsRead,
+  } = useNotifications();
 
   const getNotificationIcon = (type: string) => {
     switch (type) {
@@ -150,8 +125,8 @@ export default function NotificationCenter() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => markAllAsRead.mutate()}
-                  disabled={markAllAsRead.isPending}
+                  onClick={() => markAllAsRead()}
+                  disabled={isMarkingAllAsRead}
                 >
                   Marcar todas como lidas
                 </Button>
@@ -180,7 +155,7 @@ export default function NotificationCenter() {
                       } ${!notification.isRead ? "bg-blue-50" : ""}`}
                       onClick={() => {
                         if (!notification.isRead) {
-                          markAsRead.mutate(notification.id);
+                          markAsRead(notification.id);
                         }
                       }}
                     >

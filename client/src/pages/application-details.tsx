@@ -1,14 +1,16 @@
+import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useParams, useLocation } from "wouter";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
+import { Button } from "../components/ui/button";
+import { Badge } from "../components/ui/badge";
+import { Skeleton } from "../components/ui/skeleton";
 import { ArrowLeft, Calendar, DollarSign, FileText, User, Paperclip, Download, Eye } from "lucide-react";
-import { formatKwanza, getProjectTypeLabel, getStatusLabel } from "@/lib/angola-utils";
+import { formatKwanza, getProjectTypeLabel, getStatusLabel } from "../lib/angola-utils";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import type { CreditApplication } from "@shared/schema";
+import type { CreditApplication } from "../../../shared/schema";
+import { useCreditApplications } from "../contexts/CreditApplicationContext";
 
 // Tipo estendido para incluir documentos
 type CreditApplicationWithDocuments = CreditApplication & {
@@ -88,7 +90,7 @@ export default function ApplicationDetails() {
   const applicationId = params.id;
 
   const { data: application, isLoading } = useQuery<CreditApplicationWithDocuments>({
-    queryKey: ['/api/credit-applications', applicationId],
+    queryKey: ['/api/credit-applications/user', applicationId],
     enabled: !!applicationId,
   });
 

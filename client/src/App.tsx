@@ -1,24 +1,25 @@
 import { Switch, Route } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
-import { Toaster } from "@/components/ui/toaster";
-import { TooltipProvider } from "@/components/ui/tooltip";
+import { Toaster } from "./components/ui/toaster";
+import { TooltipProvider } from "./components/ui/tooltip";
 import { useAuth } from "./hooks/use-auth";
-import { PermissionGate } from "@/components/PermissionGate";
-import Landing from "@/pages/landing";
-import Dashboard from "@/pages/dashboard";
-import AdminDashboard from "@/pages/admin-dashboard";
-import FinancialInstitutionDashboard from "@/pages/financial-institution-dashboard";
-import CreditApplication from "@/pages/credit-application";
-import ApplicationDetails from "@/pages/application-details";
-import FinancialApplicationDetails from "@/pages/financial-application-details";
-import Simulator from "@/pages/simulator";
-import Reports from "@/pages/reports";
-import ProfileManagement from "@/pages/profile-management";
-import FAQ from "@/pages/faq";
-import Contact from "@/pages/contact";
-import Terms from "@/pages/terms";
-import NotFound from "@/pages/not-found";
+import { PermissionGate } from "./components/PermissionGate";
+import { CreditApplicationProvider } from "./contexts/CreditApplicationContext";
+import Landing from "./pages/landing";
+import Dashboard from "./pages/dashboard";
+import AdminDashboard from "./pages/admin-dashboard";
+import FinancialInstitutionDashboard from "./pages/financial-institution-dashboard";
+import CreditApplication from "./pages/credit-application";
+import ApplicationDetails from "./pages/application-details";
+import FinancialApplicationDetails from "./pages/financial-application-details";
+import Simulator from "./pages/simulator";
+import Reports from "./pages/reports";
+import ProfileManagement from "./pages/profile-management";
+import FAQ from "./pages/faq";
+import Contact from "./pages/contact";
+import Terms from "./pages/terms";
+import NotFound from "./pages/not-found";
 
 function Router() {
   const { user, isLoading } = useAuth();
@@ -85,10 +86,12 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Router />
-      </TooltipProvider>
+      <CreditApplicationProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Router />
+        </TooltipProvider>
+      </CreditApplicationProvider>
     </QueryClientProvider>
   );
 }

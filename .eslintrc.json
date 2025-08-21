@@ -164,16 +164,6 @@
       }
     },
     {
-      "files": ["*.test.ts", "*.test.tsx", "*.spec.ts", "*.spec.tsx"],
-      "env": {
-        "jest": true
-      },
-      "rules": {
-        "@typescript-eslint/no-explicit-any": "off",
-        "@typescript-eslint/no-non-null-assertion": "off"
-      }
-    },
-    {
       "files": ["scripts/**/*", "*.config.js", "*.config.ts"],
       "rules": {
         "no-console": "off",

@@ -5,18 +5,19 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { ArrowLeft, Sprout, FileText } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
-import { formatKwanza, parseKwanza } from "@/lib/angola-utils";
-import { useAuth } from "@/hooks/use-auth";
-import FinancialInstitutionSelector from "@/components/credit/financial-institution-selector";
-import DocumentManager from "@/components/DocumentManager";
+import { Button } from "../components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "../components/ui/form";
+import { Input } from "../components/ui/input";
+import { Textarea } from "../components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
+import { useToast } from "../hooks/use-toast";
+import { apiRequest } from "../lib/queryClient";
+import { formatKwanza, parseKwanza } from "../lib/angola-utils";
+import { useAuth } from "../hooks/use-auth";
+import FinancialInstitutionSelector from "../components/credit/financial-institution-selector";
+import DocumentManager from "../components/DocumentManager";
+import { useCreditApplications } from "../contexts/CreditApplicationContext";
 
 const applicationSchema = z.object({
   projectName: z.string().min(3, "Nome do projeto deve ter pelo menos 3 caracteres"),
@@ -64,6 +65,7 @@ export default function CreditApplication() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const { addApplication } = useCreditApplications();
   
   // Financial institution and program selection
   const [selectedInstitution, setSelectedInstitution] = useState<string>("");
@@ -138,12 +140,17 @@ export default function CreditApplication() {
       
       return await response.json();
     },
-    onSuccess: () => {
+    onSuccess: (newApplication) => {
+      // Adicionar a nova aplicação ao contexto reativo
+      addApplication(newApplication);
+      
       toast({
         title: "Solicitação enviada com sucesso!",
         description: "A sua solicitação será analisada em breve.",
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/credit-applications"] });
+      
+      // Invalidar queries para garantir sincronização
+      queryClient.invalidateQueries({ queryKey: ["/api/credit-applications/user"] });
       setLocation("/dashboard");
     },
     onError: (error: Error) => {

@@ -1,12 +1,12 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
-import { formatKwanza, getProjectTypeLabel, getStatusLabel } from "@/lib/angola-utils";
+import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
+import { Button } from "../ui/button";
+import { Skeleton } from "../ui/skeleton";
+import { formatKwanza, getProjectTypeLabel, getStatusLabel } from "../../lib/angola-utils";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Link } from "wouter";
-import { PermissionGate } from "@/components/PermissionGate";
-import type { CreditApplication } from "@shared/schema";
+import { PermissionGate } from "../PermissionGate";
+import type { CreditApplication } from "../../../../shared/schema";
 
 interface ApplicationsListProps {
   applications: CreditApplication[];

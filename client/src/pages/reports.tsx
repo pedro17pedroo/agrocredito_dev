@@ -17,6 +17,15 @@ import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 import type { CreditApplication, Account, Payment } from "@shared/schema";
 
+// Extend jsPDF type to include lastAutoTable property
+declare module 'jspdf' {
+  interface jsPDF {
+    lastAutoTable?: {
+      finalY: number;
+    };
+  }
+}
+
 export default function Reports() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -85,16 +94,26 @@ export default function Reports() {
     try {
       const doc = new jsPDF();
       
-      // Header
-      doc.setFontSize(20);
-      doc.text('Relatório Financeiro AgriCredit', 20, 30);
-      doc.setFontSize(12);
-      doc.text(`Gerado em: ${format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`, 20, 40);
-      doc.text(`Usuário: ${user?.fullName}`, 20, 50);
+      // Header com logo e informações
+      doc.setFontSize(22);
+      doc.setTextColor(76, 175, 80); // Verde AgriCredit
+      doc.text('AgriCredit - Relatório Financeiro', 20, 25);
       
-      // Resumo estatístico
+      doc.setFontSize(10);
+      doc.setTextColor(100, 100, 100);
+      doc.text(`Gerado em: ${format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`, 20, 35);
+      doc.text(`Usuário: ${user?.fullName}`, 20, 42);
+      doc.text(`Período: ${dateRange?.from ? format(dateRange.from, 'dd/MM/yyyy', { locale: ptBR }) : 'N/A'} - ${dateRange?.to ? format(dateRange.to, 'dd/MM/yyyy', { locale: ptBR }) : 'N/A'}`, 20, 49);
+      
+      // Linha separadora
+      doc.setDrawColor(76, 175, 80);
+      doc.setLineWidth(0.5);
+      doc.line(20, 55, 190, 55);
+      
+      // Resumo estatístico com melhor formatação
       doc.setFontSize(16);
-      doc.text('Resumo Estatístico', 20, 70);
+      doc.setTextColor(0, 0, 0);
+      doc.text('📊 Resumo Estatístico', 20, 70);
       
       const summaryData = [
         ['Total de Solicitações', stats.totalApplications.toString()],
@@ -102,42 +121,182 @@ export default function Reports() {
         ['Solicitações Rejeitadas', stats.rejectedApplications.toString()],
         ['Solicitações Pendentes', stats.pendingApplications.toString()],
         ['Taxa de Aprovação', `${approvalRate.toFixed(1)}%`],
-        ['Valor Total Solicitado', formatKwanza(stats.totalCreditValue)],
-        ['Valor Total Aprovado', formatKwanza(stats.approvedCreditValue)],
-        ['Total de Pagamentos', formatKwanza(stats.totalPayments)]
+        ['Valor Total Solicitado (AOA)', formatKwanza(stats.totalCreditValue)],
+        ['Valor Total Aprovado (AOA)', formatKwanza(stats.approvedCreditValue)],
+        ['Total de Pagamentos (AOA)', formatKwanza(stats.totalPayments)]
       ];
 
       autoTable(doc, {
         head: [['Métrica', 'Valor']],
         body: summaryData,
         startY: 80,
-        theme: 'grid',
-        headStyles: { fillColor: [76, 175, 80] },
+        theme: 'striped',
+        headStyles: { 
+          fillColor: [76, 175, 80],
+          textColor: [255, 255, 255],
+          fontSize: 11,
+          fontStyle: 'bold'
+        },
+        bodyStyles: {
+          fontSize: 10
+        },
+        alternateRowStyles: {
+          fillColor: [245, 245, 245]
+        },
+        margin: { left: 20, right: 20 }
       });
 
-      // Solicitações detalhadas
+      // Gráfico de distribuição por status (representação textual)
+      const finalY = doc.lastAutoTable?.finalY || 150;
+      doc.setFontSize(14);
+      doc.text('📈 Distribuição por Estado das Solicitações', 20, finalY + 20);
+      
+      const statusData = [
+        ['Estado', 'Quantidade', 'Percentual', 'Barra Visual'],
+        [
+          'Aprovadas', 
+          stats.approvedApplications.toString(), 
+          `${stats.totalApplications > 0 ? (stats.approvedApplications / stats.totalApplications * 100).toFixed(1) : 0}%`,
+          '█'.repeat(Math.round((stats.approvedApplications / Math.max(stats.totalApplications, 1)) * 20))
+        ],
+        [
+          'Pendentes', 
+          stats.pendingApplications.toString(), 
+          `${stats.totalApplications > 0 ? (stats.pendingApplications / stats.totalApplications * 100).toFixed(1) : 0}%`,
+          '█'.repeat(Math.round((stats.pendingApplications / Math.max(stats.totalApplications, 1)) * 20))
+        ],
+        [
+          'Rejeitadas', 
+          stats.rejectedApplications.toString(), 
+          `${stats.totalApplications > 0 ? (stats.rejectedApplications / stats.totalApplications * 100).toFixed(1) : 0}%`,
+          '█'.repeat(Math.round((stats.rejectedApplications / Math.max(stats.totalApplications, 1)) * 20))
+        ]
+      ];
+
+      autoTable(doc, {
+         head: [['Estado', 'Quantidade', 'Percentual', 'Barra Visual']],
+         body: statusData.slice(1),
+         startY: finalY + 30,
+         theme: 'grid',
+         headStyles: { 
+           fillColor: [52, 152, 219],
+           textColor: [255, 255, 255],
+           fontSize: 10,
+           fontStyle: 'bold'
+         },
+         bodyStyles: {
+           fontSize: 9
+         },
+         columnStyles: {
+           3: { fontSize: 8 }
+         },
+         margin: { left: 20, right: 20 }
+       });
+
+      // Distribuição por tipo de projeto
+      if (Object.keys(projectDistribution).length > 0) {
+        const projectFinalY = doc.lastAutoTable?.finalY || 200;
+        
+        doc.setFontSize(14);
+        doc.text('🌾 Distribuição por Tipo de Projeto', 20, projectFinalY + 20);
+        
+        const projectData = Object.entries(projectDistribution).map(([type, count]) => {
+          const percentage = ((count / stats.totalApplications) * 100).toFixed(1);
+          return [
+            getProjectTypeLabel(type),
+            count.toString(),
+            `${percentage}%`,
+            '█'.repeat(Math.round((count / Math.max(stats.totalApplications, 1)) * 15))
+          ];
+        });
+
+        autoTable(doc, {
+           head: [['Tipo de Projeto', 'Quantidade', 'Percentual', 'Barra Visual']],
+           body: projectData,
+           startY: projectFinalY + 30,
+           theme: 'grid',
+           headStyles: { 
+             fillColor: [155, 89, 182],
+             textColor: [255, 255, 255],
+             fontSize: 10,
+             fontStyle: 'bold'
+           },
+           bodyStyles: {
+             fontSize: 9
+           },
+           columnStyles: {
+             3: { fontSize: 8 }
+           },
+           margin: { left: 20, right: 20 }
+         });
+      }
+
+      // Solicitações detalhadas em nova página
       if (filteredApplications.length > 0) {
         doc.addPage();
-        doc.setFontSize(16);
-        doc.text('Solicitações de Crédito', 20, 30);
+        doc.setFontSize(18);
+        doc.setTextColor(76, 175, 80);
+        doc.text('📋 Solicitações de Crédito Detalhadas', 20, 25);
+        
+        doc.setFontSize(10);
+        doc.setTextColor(100, 100, 100);
+        doc.text(`Total de ${filteredApplications.length} solicitações no período selecionado`, 20, 35);
 
-        const applicationData = filteredApplications.map(app => [
-          app.projectName,
+        const applicationData = filteredApplications.slice(0, 50).map(app => [
+          app.projectName.length > 25 ? app.projectName.substring(0, 22) + '...' : app.projectName,
           getProjectTypeLabel(app.projectType),
-          formatKwanza(app.amount),
-          app.status === 'approved' ? 'Aprovada' : 
-          app.status === 'rejected' ? 'Rejeitada' : 
-          app.status === 'pending' ? 'Pendente' : 'Em Análise',
-          format(parseISO(app.createdAt!.toString()), 'dd/MM/yyyy', { locale: ptBR })
+          formatKwanza(parseFloat(app.amount)),
+          app.status === 'approved' ? '✅ Aprovada' : 
+          app.status === 'rejected' ? '❌ Rejeitada' : 
+          app.status === 'pending' ? '⏳ Pendente' : '🔍 Em Análise',
+          format(parseISO(app.createdAt!.toString()), 'dd/MM/yyyy', { locale: ptBR }),
+          `${app.term} meses`
         ]);
 
         autoTable(doc, {
-          head: [['Projeto', 'Tipo', 'Montante', 'Estado', 'Data']],
+          head: [['Projeto', 'Tipo', 'Montante (AOA)', 'Estado', 'Data', 'Prazo']],
           body: applicationData,
-          startY: 40,
-          theme: 'grid',
-          headStyles: { fillColor: [76, 175, 80] },
+          startY: 45,
+          theme: 'striped',
+          headStyles: { 
+            fillColor: [76, 175, 80],
+            textColor: [255, 255, 255],
+            fontSize: 9,
+            fontStyle: 'bold'
+          },
+          bodyStyles: {
+            fontSize: 8
+          },
+          alternateRowStyles: {
+            fillColor: [248, 249, 250]
+          },
+          columnStyles: {
+            0: { cellWidth: 35 },
+            1: { cellWidth: 25 },
+            2: { cellWidth: 30, halign: 'right' },
+            3: { cellWidth: 25 },
+            4: { cellWidth: 20 },
+            5: { cellWidth: 15 }
+          },
+          margin: { left: 15, right: 15 }
         });
+        
+        if (filteredApplications.length > 50) {
+          const remainingY = doc.lastAutoTable?.finalY || 250;
+          doc.setFontSize(10);
+          doc.setTextColor(150, 150, 150);
+          doc.text(`Nota: Mostrando apenas as primeiras 50 solicitações de ${filteredApplications.length} total.`, 20, remainingY + 10);
+        }
+      }
+
+      // Rodapé
+      const pageCount = doc.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
+        doc.setTextColor(150, 150, 150);
+        doc.text(`AgriCredit © ${new Date().getFullYear()} - Página ${i} de ${pageCount}`, 20, 285);
+        doc.text(`Relatório gerado automaticamente em ${format(new Date(), 'dd/MM/yyyy HH:mm', { locale: ptBR })}`, 120, 285);
       }
 
       // Save PDF
@@ -145,7 +304,7 @@ export default function Reports() {
       
       toast({
         title: "PDF exportado com sucesso!",
-        description: "O relatório foi baixado para o seu dispositivo.",
+        description: "O relatório foi baixado com gráficos e estatísticas detalhadas.",
       });
     } catch (error) {
       console.error('PDF export error:', error);
@@ -161,60 +320,159 @@ export default function Reports() {
     try {
       const workbook = XLSX.utils.book_new();
 
-      // Resumo estatístico
-      const summaryData = [
+      // Informações do relatório
+      const infoData = [
+        ['AgriCredit - Relatório Financeiro'],
+        [''],
+        ['Gerado em:', format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })],
+        ['Usuário:', user?.fullName || 'N/A'],
+        ['Período:', `${dateRange?.from ? format(dateRange.from, 'dd/MM/yyyy', { locale: ptBR }) : 'N/A'} - ${dateRange?.to ? format(dateRange.to, 'dd/MM/yyyy', { locale: ptBR }) : 'N/A'}`],
+        [''],
+        ['RESUMO ESTATÍSTICO'],
         ['Métrica', 'Valor'],
         ['Total de Solicitações', stats.totalApplications],
         ['Solicitações Aprovadas', stats.approvedApplications],
         ['Solicitações Rejeitadas', stats.rejectedApplications],
         ['Solicitações Pendentes', stats.pendingApplications],
         ['Taxa de Aprovação (%)', parseFloat(approvalRate.toFixed(1))],
-        ['Valor Total Solicitado (AOA)', stats.totalCreditValue],
-        ['Valor Total Aprovado (AOA)', stats.approvedCreditValue],
-        ['Total de Pagamentos (AOA)', stats.totalPayments]
+        ['Valor Total Solicitado (AOA)', formatKwanza(stats.totalCreditValue)],
+        ['Valor Total Aprovado (AOA)', formatKwanza(stats.approvedCreditValue)],
+        ['Total de Pagamentos (AOA)', formatKwanza(stats.totalPayments)]
       ];
 
-      const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
-      XLSX.utils.book_append_sheet(workbook, summarySheet, 'Resumo');
+      const infoSheet = XLSX.utils.aoa_to_sheet(infoData);
+      
+      // Formatação da planilha de resumo
+      const range = XLSX.utils.decode_range(infoSheet['!ref'] || 'A1');
+      
+      // Título principal
+      if (infoSheet['A1']) {
+        infoSheet['A1'].s = {
+          font: { bold: true, sz: 16, color: { rgb: "4CAF50" } },
+          alignment: { horizontal: 'center' }
+        };
+      }
+      
+      // Cabeçalho da seção
+      if (infoSheet['A7']) {
+        infoSheet['A7'].s = {
+          font: { bold: true, sz: 12 },
+          fill: { fgColor: { rgb: "E8F5E8" } }
+        };
+      }
+      
+      XLSX.utils.book_append_sheet(workbook, infoSheet, 'Resumo');
 
       // Solicitações detalhadas
       if (filteredApplications.length > 0) {
         const applicationData = [
-          ['Projeto', 'Tipo', 'Montante (AOA)', 'Estado', 'Data', 'Prazo (meses)']
+          ['Projeto', 'Tipo', 'Montante (AOA)', 'Montante Formatado', 'Estado', 'Data', 'Prazo (meses)', 'Observações']
         ];
         
         filteredApplications.forEach(app => {
           applicationData.push([
             app.projectName,
             getProjectTypeLabel(app.projectType),
-            parseFloat(app.amount).toString(),
+            parseFloat(app.amount), // Valor numérico para cálculos
+            formatKwanza(parseFloat(app.amount)), // Valor formatado para visualização
             app.status === 'approved' ? 'Aprovada' : 
             app.status === 'rejected' ? 'Rejeitada' : 
             app.status === 'pending' ? 'Pendente' : 'Em Análise',
             format(parseISO(app.createdAt!.toString()), 'dd/MM/yyyy', { locale: ptBR }),
-            app.term.toString()
+            app.term,
+            app.status === 'approved' ? 'Crédito aprovado e disponível' :
+            app.status === 'rejected' ? 'Solicitação não atende aos critérios' :
+            app.status === 'pending' ? 'Aguardando análise' : 'Em processo de avaliação'
           ]);
         });
 
         const applicationsSheet = XLSX.utils.aoa_to_sheet(applicationData);
-        XLSX.utils.book_append_sheet(workbook, applicationsSheet, 'Solicitações');
+        
+        // Adicionar totais no final
+        const totalRow = applicationData.length + 2;
+        applicationData.push(
+          [''],
+          ['TOTAIS:', '', '', '', '', '', '', ''],
+          ['Total Geral:', '', filteredApplications.reduce((sum, app) => sum + parseFloat(app.amount), 0), formatKwanza(filteredApplications.reduce((sum, app) => sum + parseFloat(app.amount), 0)), '', '', '', '']
+        );
+        
+        const finalApplicationsSheet = XLSX.utils.aoa_to_sheet(applicationData);
+        XLSX.utils.book_append_sheet(workbook, finalApplicationsSheet, 'Solicitações');
       }
+
+      // Distribuição por estado
+      const statusDistributionData = [
+        ['DISTRIBUIÇÃO POR ESTADO'],
+        [''],
+        ['Estado', 'Quantidade', 'Percentual', 'Valor Total (AOA)', 'Valor Formatado'],
+        [
+          'Aprovadas',
+          stats.approvedApplications,
+          `${stats.totalApplications > 0 ? (stats.approvedApplications / stats.totalApplications * 100).toFixed(1) : 0}%`,
+          stats.approvedCreditValue,
+          formatKwanza(stats.approvedCreditValue)
+        ],
+        [
+          'Pendentes',
+          stats.pendingApplications,
+          `${stats.totalApplications > 0 ? (stats.pendingApplications / stats.totalApplications * 100).toFixed(1) : 0}%`,
+          0, // Valor pendente não é contabilizado
+          'AOA 0,00'
+        ],
+        [
+          'Rejeitadas',
+          stats.rejectedApplications,
+          `${stats.totalApplications > 0 ? (stats.rejectedApplications / stats.totalApplications * 100).toFixed(1) : 0}%`,
+          0, // Valor rejeitado não é contabilizado
+          'AOA 0,00'
+        ]
+      ];
+
+      const statusSheet = XLSX.utils.aoa_to_sheet(statusDistributionData);
+      XLSX.utils.book_append_sheet(workbook, statusSheet, 'Distribuição Estado');
 
       // Distribuição por tipo de projeto
       if (Object.keys(projectDistribution).length > 0) {
-        const distributionData = [['Tipo de Projeto', 'Quantidade', 'Percentual']];
+        const distributionData = [
+          ['DISTRIBUIÇÃO POR TIPO DE PROJETO'],
+          [''],
+          ['Tipo de Projeto', 'Quantidade', 'Percentual', 'Valor Médio (AOA)']
+        ];
+        
         Object.entries(projectDistribution).forEach(([type, count]) => {
           const percentage = ((count / stats.totalApplications) * 100).toFixed(1);
+          const typeApplications = filteredApplications.filter(app => app.projectType === type);
+          const avgValue = typeApplications.length > 0 
+            ? typeApplications.reduce((sum, app) => sum + parseFloat(app.amount), 0) / typeApplications.length
+            : 0;
+          
           distributionData.push([
             getProjectTypeLabel(type),
-            count.toString(),
-            `${percentage}%`
+            count,
+            `${percentage}%`,
+            formatKwanza(avgValue)
           ]);
         });
 
         const distributionSheet = XLSX.utils.aoa_to_sheet(distributionData);
-        XLSX.utils.book_append_sheet(workbook, distributionSheet, 'Distribuição');
+        XLSX.utils.book_append_sheet(workbook, distributionSheet, 'Distribuição Projetos');
       }
+
+      // Análise financeira
+      const financialData = [
+        ['ANÁLISE FINANCEIRA DETALHADA'],
+        [''],
+        ['Métrica', 'Valor (AOA)', 'Valor Formatado', 'Observações'],
+        ['Valor Total Solicitado', stats.totalCreditValue, formatKwanza(stats.totalCreditValue), 'Soma de todas as solicitações'],
+        ['Valor Total Aprovado', stats.approvedCreditValue, formatKwanza(stats.approvedCreditValue), 'Soma dos créditos aprovados'],
+        ['Valor Total Rejeitado', stats.totalCreditValue - stats.approvedCreditValue, formatKwanza(stats.totalCreditValue - stats.approvedCreditValue), 'Valor das solicitações rejeitadas'],
+        ['Total de Pagamentos', stats.totalPayments, formatKwanza(stats.totalPayments), 'Pagamentos recebidos'],
+        ['Saldo Devedor', stats.approvedCreditValue - stats.totalPayments, formatKwanza(stats.approvedCreditValue - stats.totalPayments), 'Valor ainda em aberto'],
+        ['Taxa de Recuperação', stats.approvedCreditValue > 0 ? ((stats.totalPayments / stats.approvedCreditValue) * 100).toFixed(2) + '%' : '0%', '', 'Percentual de pagamentos vs aprovado']
+      ];
+
+      const financialSheet = XLSX.utils.aoa_to_sheet(financialData);
+      XLSX.utils.book_append_sheet(workbook, financialSheet, 'Análise Financeira');
 
       // Generate and save Excel file
       const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
@@ -223,7 +481,7 @@ export default function Reports() {
       
       toast({
         title: "Excel exportado com sucesso!",
-        description: "O relatório foi baixado para o seu dispositivo.",
+        description: "O relatório foi baixado com múltiplas planilhas e análises detalhadas.",
       });
     } catch (error) {
       console.error('Excel export error:', error);

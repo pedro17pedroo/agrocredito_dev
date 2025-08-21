@@ -150,9 +150,7 @@ libs/
 # Shell scripts (might have different linting rules)
 *.sh
 
-# Docker files
-Dockerfile*
-.dockerignore
+
 
 # CI/CD files
 .github/

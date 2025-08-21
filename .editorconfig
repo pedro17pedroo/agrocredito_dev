@@ -43,9 +43,7 @@ max_line_length = 80
 indent_size = 2
 end_of_line = lf
 
-# Docker files
-[{Dockerfile,Dockerfile.*}]
-indent_size = 2
+
 
 # Configuration files
 [*.{toml,ini,cfg,conf}]

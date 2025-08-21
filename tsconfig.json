@@ -12,10 +12,7 @@
     "build",
     "dist",
     "coverage",
-    "**/*.test.ts",
-    "**/*.test.tsx",
-    "**/*.spec.ts",
-    "**/*.spec.tsx",
+
     "**/*.d.ts"
   ],
   "compilerOptions": {
