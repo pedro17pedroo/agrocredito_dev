@@ -39,6 +39,7 @@
     "restore:win:v2:force": "tsx scripts/restore-windows-v2.ts --force",
     "debug:win": "tsx scripts/debug-windows.ts",
     "test:input:win": "tsx scripts/test-input-windows.ts",
+    "create:db:win": "tsx scripts/create-database-windows.ts",
     "backup:win": "tsx scripts/backup-windows.ts",
     "docker:build": "docker build -t agrocredito .",
     "docker:run": "docker run -p 5000:5000 --env-file .env agrocredito",

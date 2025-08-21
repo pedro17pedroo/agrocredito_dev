@@ -126,6 +126,12 @@ npm run debug:win
 - ✅ Backups disponíveis
 - ✅ Contagem de dados
 
+### Script de Criação de Base de Dados
+```bash
+npm run create:db:win
+```
+Cria a base de dados se ela não existir.
+
 ### Teste de Entrada do Utilizador
 ```bash
 npm run test:input:win
@@ -147,9 +153,10 @@ npm run test:input:win
 ### Passos de Diagnóstico
 1. [ ] Executar `npm run debug:win`
 2. [ ] Verificar se todas as verificações passam
-3. [ ] Se falhar conexão MySQL, verificar serviço
-4. [ ] Se falhar Drizzle, executar `npm run db:migrate`
-5. [ ] Testar entrada: `npm run test:input:win`
+3. [ ] Se "Unknown database": executar `npm run create:db:win`
+4. [ ] Se falhar conexão MySQL, verificar serviço
+5. [ ] Se falhar Drizzle, executar `npm run db:migrate`
+6. [ ] Testar entrada: `npm run test:input:win`
 
 ### Passos de Restore
 1. [ ] Verificar se existem backups: `ls backups/`
@@ -204,6 +211,7 @@ Se os problemas persistirem:
 | Script | Descrição |
 |--------|----------|
 | `npm run debug:win` | Diagnóstico completo do sistema |
+| `npm run create:db:win` | Criar base de dados automaticamente |
 | `npm run restore:win` | Restore original |
 | `npm run restore:win:v2` | Restore melhorado |
 | `npm run restore:win:v2:force` | Restore automático |

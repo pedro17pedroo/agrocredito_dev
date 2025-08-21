@@ -2,7 +2,6 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 import mysql from 'mysql2/promise';
-import { db } from '../server/db';
 
 // Configurações da base de dados
 const DB_HOST = process.env.DB_HOST || 'localhost';
@@ -65,22 +64,28 @@ async function debugSystem() {
     // 3. Testar conexão Drizzle
     console.log('\n🔗 Testando Conexão Drizzle...');
     try {
-      // Importar schema para testar
-      const { users, profiles, permissions } = await import('../shared/schema');
-      
-      // Testar query com Drizzle
-      const userCount = await db.select().from(users).limit(1);
-      console.log('   ✅ Conexão Drizzle: SUCESSO');
-      
-      // Verificar dados existentes
-      const [userCountResult] = await db.execute('SELECT COUNT(*) as count FROM users');
-      const [profileCountResult] = await db.execute('SELECT COUNT(*) as count FROM profiles');
-      const [permissionCountResult] = await db.execute('SELECT COUNT(*) as count FROM permissions');
-      
-      console.log(`   👥 Utilizadores: ${(userCountResult as any).count}`);
-      console.log(`   👤 Perfis: ${(profileCountResult as any).count}`);
-      console.log(`   🔐 Permissões: ${(permissionCountResult as any).count}`);
-      
+      // Verificar se DATABASE_URL está definida
+      if (!process.env.DATABASE_URL) {
+        console.log('   ❌ DATABASE_URL não definida - Drizzle não pode ser testado');
+        console.log('   💡 Defina DATABASE_URL no .env ou execute: npm run create:db:win');
+      } else {
+        // Importar db apenas se DATABASE_URL estiver definida
+        const { db } = await import('../server/db');
+        const { users, profiles, permissions } = await import('../shared/schema');
+        
+        // Testar query com Drizzle
+        const userCount = await db.select().from(users).limit(1);
+        console.log('   ✅ Conexão Drizzle: SUCESSO');
+        
+        // Verificar dados existentes
+        const [userCountResult] = await db.execute('SELECT COUNT(*) as count FROM users');
+        const [profileCountResult] = await db.execute('SELECT COUNT(*) as count FROM profiles');
+        const [permissionCountResult] = await db.execute('SELECT COUNT(*) as count FROM permissions');
+        
+        console.log(`   👥 Utilizadores: ${(userCountResult as any).count}`);
+        console.log(`   👤 Perfis: ${(profileCountResult as any).count}`);
+        console.log(`   🔐 Permissões: ${(permissionCountResult as any).count}`);
+      }
     } catch (error: any) {
       console.log('   ❌ Conexão Drizzle: FALHOU');
       console.log(`   💥 Erro: ${error.message}`);
@@ -127,9 +132,10 @@ async function debugSystem() {
     console.log('\n🎉 Debug concluído!');
     console.log('\n💡 Sugestões:');
     console.log('   1. Se a conexão MySQL falhou, verifique se o MySQL está a correr');
-    console.log('   2. Se a conexão Drizzle falhou, execute: npm run db:migrate');
-    console.log('   3. Para seeds: npm run db:seed-all:win');
-    console.log('   4. Para restore: npm run restore:win:force');
+    console.log('   2. Se a base de dados não existe, execute: npm run create:db:win');
+    console.log('   3. Se a conexão Drizzle falhou, execute: npm run db:migrate');
+    console.log('   4. Para seeds: npm run db:seed-all:win');
+    console.log('   5. Para restore: npm run restore:win:v2:force');
     
   } catch (error: any) {
     console.error('❌ Erro no debug:', error.message);
