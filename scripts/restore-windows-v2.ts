@@ -1,7 +1,7 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
-import mysql from 'mysql2/promise';
+import { execSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import readline from 'readline';
@@ -79,53 +79,25 @@ function askConfirmation(question: string): Promise<boolean> {
   });
 }
 
-// Função para executar comandos SQL
-async function executeSqlCommands(connection: mysql.Connection, sqlContent: string) {
-  console.log('🔍 Analisando conteúdo SQL...');
+// Função para executar o restore usando mysqlsh
+async function executeRestore(backupFile: string) {
+  console.log('🔍 Iniciando restauração com MySQL Shell...');
   
-  // Dividir o conteúdo SQL em comandos individuais
-  const commands = sqlContent
-    .split(';')
-    .map(cmd => cmd.trim())
-    .filter(cmd => cmd.length > 0 && !cmd.startsWith('--') && !cmd.startsWith('/*'));
-
-  console.log(`📊 Executando ${commands.length} comandos SQL...`);
-  
-  let successCount = 0;
-  let errorCount = 0;
-
-  for (let i = 0; i < commands.length; i++) {
-    const command = commands[i];
-    try {
-      await connection.execute(command);
-      successCount++;
-      
-      // Mostrar progresso a cada 10 comandos
-      if (successCount % 10 === 0) {
-        console.log(`⏳ Progresso: ${successCount}/${commands.length} comandos executados`);
-      }
-    } catch (error: any) {
-      // Ignorar alguns erros comuns que não são críticos
-      if (error.code === 'ER_TABLE_EXISTS_ERROR' || 
-          error.code === 'ER_DUP_KEYNAME' ||
-          error.message.includes('already exists')) {
-        // Erro não crítico, continuar
-        continue;
-      }
-      
-      errorCount++;
-      console.warn(`⚠️ Erro no comando ${i + 1} (ignorado): ${error.message}`);
-      
-      // Se houver muitos erros, parar
-      if (errorCount > 10) {
-        throw new Error(`Muitos erros durante o restore (${errorCount}). Parando execução.`);
-      }
-    }
-  }
-
-  console.log(`✅ Restore concluído: ${successCount} comandos executados com sucesso`);
-  if (errorCount > 0) {
-    console.log(`⚠️ ${errorCount} comandos com erros (ignorados)`);
+  try {
+    // Construir o comando mysqlsh
+    const command = `mysqlsh --sql -u ${DB_USER} -h ${DB_HOST} -P ${DB_PORT} --password=${DB_PASSWORD} --database=${DB_NAME} -e "source ${backupFile}"`;
+    
+    console.log('🚀 Executando comando de restauração...');
+    console.log(`📝 Comando: mysqlsh --sql -u ${DB_USER} -h ${DB_HOST} -P ${DB_PORT} --password=*** --database=${DB_NAME} -e "source ${backupFile}"`);
+    
+    // Executar o comando
+    const output = execSync(command, { stdio: 'inherit' });
+    
+    console.log('✅ Restauração concluída com sucesso!');
+    return true;
+  } catch (error: any) {
+    console.error('❌ Erro ao executar restauração:', error.message);
+    return false;
   }
 }
 
@@ -133,8 +105,21 @@ async function executeSqlCommands(connection: mysql.Connection, sqlContent: stri
 async function main() {
   try {
     console.log('🚀 Iniciando função main...');
+    console.log('📝 Diretório atual:', process.cwd());
+    console.log('📝 Diretório de backups:', BACKUP_DIR);
+    console.log('🔍 Verificando se o diretório de backups existe...');
+    console.log('📂 Conteúdo do diretório de backups:', fs.existsSync(BACKUP_DIR) ? fs.readdirSync(BACKUP_DIR) : 'Diretório não encontrado');
+    
     const args = process.argv.slice(2);
     console.log(`📋 Argumentos recebidos: ${args.length > 0 ? args.join(', ') : 'nenhum'}`);
+    
+    // Log das variáveis de ambiente
+    console.log('🔧 Variáveis de ambiente:');
+    console.log(`   DB_HOST: ${process.env.DB_HOST}`);
+    console.log(`   DB_PORT: ${process.env.DB_PORT}`);
+    console.log(`   DB_NAME: ${process.env.DB_NAME}`);
+    console.log(`   DB_USER: ${process.env.DB_USER}`);
+    console.log(`   DB_PASSWORD: ${process.env.DB_PASSWORD ? '*** (definida)' : 'não definida'}`);
     
     let backupFile: string;
 
