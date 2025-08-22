@@ -31,23 +31,18 @@
     "db:seed-applications:win": "tsx scripts/seed-applications.ts",
     "db:seed-all": "tsx server/run-all-seeds.ts",
     "db:seed-all:win": "tsx server/run-all-seeds.ts",
-
     "restore:win": "tsx scripts/restore-windows.ts",
     "restore:win:force": "tsx scripts/restore-windows.ts --force",
     "restore:win:v2": "tsx scripts/restore-windows-v2.ts",
     "restore:win:v2:force": "tsx scripts/restore-windows-v2.ts --force",
-
     "create:db:win": "tsx scripts/create-database-windows.ts",
     "backup:win": "tsx scripts/backup-windows.ts",
-
     "setup": "node scripts/setup.js",
     "backup": "node scripts/backup.js",
     "restore": "node scripts/restore.js",
     "restore:local": "powershell -ExecutionPolicy Bypass -File scripts/restore-local.ps1",
     "deploy": "node scripts/deploy.js",
-
     "lint": "echo Linting não configurado ainda",
-
     "clean": "rimraf dist node_modules/.cache",
     "health": "node -e \"const http = require('http'); const req = http.get('http://localhost:5000/api/health', (res) => { console.log('Servidor está a responder'); process.exit(0); }); req.on('error', () => { console.log('Servidor não está a responder'); process.exit(1); });\""
   },
@@ -81,6 +76,7 @@
     "@radix-ui/react-toggle": "^1.1.3",
     "@radix-ui/react-toggle-group": "^1.1.3",
     "@radix-ui/react-tooltip": "^1.2.0",
+    "@tailwindcss/forms": "^0.5.10",
     "@tanstack/react-query": "^5.60.5",
     "@types/bcrypt": "^6.0.0",
     "@types/file-saver": "^2.0.7",

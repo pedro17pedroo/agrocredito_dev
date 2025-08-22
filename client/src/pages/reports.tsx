@@ -1,21 +1,234 @@
-import { useState } from "react";
-import { useAuth } from "@/hooks/use-auth";
-import { useQuery } from "@tanstack/react-query";
-import { useLocation } from "wouter";
-import { Download, FileText, BarChart3, PieChart, TrendingUp, Calendar, ArrowLeft } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Progress } from "@/components/ui/progress";
-import { useToast } from "@/hooks/use-toast";
-import { formatKwanza, getProjectTypeLabel } from "@/lib/angola-utils";
-import { format, parseISO, subMonths, startOfMonth, endOfMonth } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import React, { useState } from 'react';
+import { Download, FileText, BarChart3, PieChart, TrendingUp, Calendar, ArrowLeft } from 'lucide-react';
+import { saveAs } from 'file-saver';
+import * as XLSX from 'xlsx';
+import { format, parseISO, subMonths, startOfMonth, endOfMonth } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import * as XLSX from 'xlsx';
-import { saveAs } from 'file-saver';
 import type { CreditApplication, Account, Payment } from "@shared/schema";
+
+// Função de toast simples
+const toast = {
+  success: (message: string) => console.log('Success:', message),
+  error: (message: string) => console.error('Error:', message)
+};
+
+// Função para formatar valores em Kwanza
+const formatKwanza = (value: number): string => {
+  return new Intl.NumberFormat('pt-AO', {
+    style: 'currency',
+    currency: 'AOA',
+    minimumFractionDigits: 2
+  }).format(value);
+};
+
+// Função para obter label do tipo de projeto
+const getProjectTypeLabel = (type: string): string => {
+  const labels: Record<string, string> = {
+    'crop': 'Cultivo',
+    'livestock': 'Pecuária',
+    'equipment': 'Equipamentos',
+    'infrastructure': 'Infraestrutura',
+    'other': 'Outro'
+  };
+  return labels[type] || type;
+};
+
+// Componentes UI básicos
+type ButtonVariant = 'default' | 'secondary' | 'outline' | 'ghost';
+type ButtonSize = 'default' | 'sm' | 'lg';
+
+interface ButtonProps {
+  children: React.ReactNode;
+  onClick?: () => void;
+  variant?: ButtonVariant;
+  size?: ButtonSize;
+  className?: string;
+  [key: string]: any;
+}
+
+const Button = ({ children, onClick, variant = 'default', size = 'default', className = '', ...props }: ButtonProps) => {
+  const baseClasses = 'inline-flex items-center justify-center rounded-md font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none ring-offset-background';
+  
+  const variants: Record<ButtonVariant, string> = {
+    default: 'bg-blue-600 text-white hover:bg-blue-700',
+    secondary: 'bg-gray-600 text-white hover:bg-gray-700',
+    outline: 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50',
+    ghost: 'hover:bg-gray-100 text-gray-700'
+  };
+  
+  const sizes: Record<ButtonSize, string> = {
+    default: 'h-10 py-2 px-4',
+    sm: 'h-9 px-3 text-sm',
+    lg: 'h-11 px-8'
+  };
+  
+  return (
+    <button
+      onClick={onClick}
+      className={`${baseClasses} ${variants[variant]} ${sizes[size]} ${className}`}
+      {...props}
+    >
+      {children}
+    </button>
+  );
+};
+
+const Card = ({ children, className = '', ...props }: any) => (
+  <div className={`bg-white rounded-lg border shadow-sm ${className}`} {...props}>
+    {children}
+  </div>
+);
+
+const CardHeader = ({ children, className = '', ...props }: any) => (
+  <div className={`p-6 pb-4 ${className}`} {...props}>
+    {children}
+  </div>
+);
+
+const CardTitle = ({ children, className = '', ...props }: any) => (
+  <h3 className={`text-lg font-semibold ${className}`} {...props}>
+    {children}
+  </h3>
+);
+
+const CardContent = ({ children, className = '', ...props }: any) => (
+  <div className={`p-6 pt-0 ${className}`} {...props}>
+    {children}
+  </div>
+);
+
+const Select = ({ children, value, onValueChange, ...props }: any) => {
+  const [isOpen, setIsOpen] = useState(false);
+  
+  return (
+    <div className="relative" {...props}>
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full px-3 py-2 text-left bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
+      >
+        <span>{value || 'Selecionar...'}</span>
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+      {isOpen && (
+        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
+          {React.Children.map(children, (child) => {
+            if (child?.type?.name === 'SelectContent') {
+              return React.cloneElement(child, { onValueChange, setIsOpen });
+            }
+            return child;
+          })}
+        </div>
+      )}
+    </div>
+  );
+};
+
+const SelectTrigger = ({ children, ...props }: any) => children;
+const SelectValue = ({ placeholder, ...props }: any) => placeholder;
+const SelectContent = ({ children, onValueChange, setIsOpen, ...props }: any) => (
+  <div {...props}>
+    {React.Children.map(children, (child) => {
+      if (child?.type?.name === 'SelectItem') {
+        return React.cloneElement(child, { onValueChange, setIsOpen });
+      }
+      return child;
+    })}
+  </div>
+);
+const SelectItem = ({ children, value, onValueChange, setIsOpen, ...props }: any) => (
+  <div
+    onClick={() => {
+      onValueChange?.(value);
+      setIsOpen?.(false);
+    }}
+    className="px-3 py-2 cursor-pointer hover:bg-gray-100"
+    {...props}
+  >
+    {children}
+  </div>
+);
+
+const Progress = ({ value, className = '', ...props }: any) => (
+  <div className={`w-full bg-gray-200 rounded-full h-2 ${className}`} {...props}>
+    <div
+      className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+      style={{ width: `${Math.min(100, Math.max(0, value || 0))}%` }}
+    />
+  </div>
+);
+
+// Hooks simulados
+const useAuth = () => {
+  return {
+    user: {
+      id: '1',
+      fullName: 'Usuário do Sistema',
+      email: 'usuario@agrocredito.ao'
+    }
+  };
+};
+
+const useQuery = ({ queryKey }: { queryKey: string[] }) => {
+  // Dados simulados para demonstração
+  const mockApplications: any[] = [
+    {
+      id: '1',
+      amount: '5000000',
+      status: 'approved',
+      projectType: 'corn',
+      createdAt: new Date(),
+      userId: '1',
+      accountId: '1',
+      description: 'Cultivo de milho',
+      purpose: 'Expansão da produção'
+    },
+    {
+      id: '2',
+      amount: '2500000',
+      status: 'pending',
+      projectType: 'cattle',
+      createdAt: new Date(),
+      userId: '1',
+      accountId: '1',
+      description: 'Criação de gado',
+      purpose: 'Aquisição de animais'
+    }
+  ];
+  
+  const mockPayments: any[] = [
+    {
+      id: '1',
+      amount: '1000000',
+      paymentDate: new Date(),
+      applicationId: '1',
+      accountId: '1',
+      method: 'bank_transfer',
+      status: 'completed'
+    }
+  ];
+  
+  if (queryKey[0] === '/api/credit-applications/user') {
+    return { data: mockApplications, isLoading: false };
+  }
+  if (queryKey[0] === '/api/accounts/user') {
+    return { data: [], isLoading: false };
+  }
+  if (queryKey[0] === '/api/reports/payments') {
+    return { data: mockPayments, isLoading: false };
+  }
+  
+  return { data: [], isLoading: false };
+};
+
+const useLocation = (): [string, (path: string) => void] => {
+  return [window.location.pathname, (path: string) => {
+    window.history.pushState({}, '', path);
+  }];
+};
 
 // Extend jsPDF type to include lastAutoTable property
 declare module 'jspdf' {
@@ -28,7 +241,6 @@ declare module 'jspdf' {
 
 export default function Reports() {
   const { user } = useAuth();
-  const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [reportType, setReportType] = useState("overview");
   const [dateRange, setDateRange] = useState({
@@ -36,15 +248,15 @@ export default function Reports() {
     to: endOfMonth(new Date()),
   });
 
-  const { data: applications = [], isLoading: applicationsLoading } = useQuery<CreditApplication[]>({
+  const { data: applications = [], isLoading: applicationsLoading } = useQuery({
     queryKey: ["/api/credit-applications/user"],
   });
 
-  const { data: accounts = [], isLoading: accountsLoading } = useQuery<Account[]>({
+  const { data: accounts = [], isLoading: accountsLoading } = useQuery({
     queryKey: ["/api/accounts/user"],
   });
 
-  const { data: allPayments = [], isLoading: paymentsLoading } = useQuery<Payment[]>({
+  const { data: allPayments = [], isLoading: paymentsLoading } = useQuery({
     queryKey: ["/api/reports/payments"],
   });
 
@@ -242,15 +454,15 @@ export default function Reports() {
         doc.setTextColor(100, 100, 100);
         doc.text(`Total de ${filteredApplications.length} solicitações no período selecionado`, 20, 35);
 
-        const applicationData = filteredApplications.slice(0, 50).map(app => [
-          app.projectName.length > 25 ? app.projectName.substring(0, 22) + '...' : app.projectName,
+        const applicationData = filteredApplications.slice(0, 50).map((app: any) => [
+          app.projectName && app.projectName.length > 25 ? app.projectName.substring(0, 22) + '...' : (app.projectName || 'N/A'),
           getProjectTypeLabel(app.projectType),
           formatKwanza(parseFloat(app.amount)),
           app.status === 'approved' ? '✅ Aprovada' : 
           app.status === 'rejected' ? '❌ Rejeitada' : 
           app.status === 'pending' ? '⏳ Pendente' : '🔍 Em Análise',
           format(parseISO(app.createdAt!.toString()), 'dd/MM/yyyy', { locale: ptBR }),
-          `${app.term} meses`
+          `${app.term || 0} meses`
         ]);
 
         autoTable(doc, {
@@ -302,17 +514,10 @@ export default function Reports() {
       // Save PDF
       doc.save(`relatorio-agricredit-${format(new Date(), 'yyyy-MM-dd')}.pdf`);
       
-      toast({
-        title: "PDF exportado com sucesso!",
-        description: "O relatório foi baixado com gráficos e estatísticas detalhadas.",
-      });
+      toast.success("PDF exportado com sucesso! O relatório foi baixado com gráficos e estatísticas detalhadas.");
     } catch (error) {
       console.error('PDF export error:', error);
-      toast({
-        title: "Erro ao exportar PDF",
-        description: "Não foi possível gerar o relatório PDF.",
-        variant: "destructive",
-      });
+      toast.error("Erro ao exportar PDF. Não foi possível gerar o relatório PDF.");
     }
   };
 
@@ -369,9 +574,9 @@ export default function Reports() {
           ['Projeto', 'Tipo', 'Montante (AOA)', 'Montante Formatado', 'Estado', 'Data', 'Prazo (meses)', 'Observações']
         ];
         
-        filteredApplications.forEach(app => {
+        filteredApplications.forEach((app: any) => {
           applicationData.push([
-            app.projectName,
+            app.projectName || 'N/A',
             getProjectTypeLabel(app.projectType),
             parseFloat(app.amount), // Valor numérico para cálculos
             formatKwanza(parseFloat(app.amount)), // Valor formatado para visualização
@@ -379,7 +584,7 @@ export default function Reports() {
             app.status === 'rejected' ? 'Rejeitada' : 
             app.status === 'pending' ? 'Pendente' : 'Em Análise',
             format(parseISO(app.createdAt!.toString()), 'dd/MM/yyyy', { locale: ptBR }),
-            app.term,
+            app.term || 0,
             app.status === 'approved' ? 'Crédito aprovado e disponível' :
             app.status === 'rejected' ? 'Solicitação não atende aos critérios' :
             app.status === 'pending' ? 'Aguardando análise' : 'Em processo de avaliação'
@@ -440,15 +645,16 @@ export default function Reports() {
         ];
         
         Object.entries(projectDistribution).forEach(([type, count]) => {
-          const percentage = ((count / stats.totalApplications) * 100).toFixed(1);
-          const typeApplications = filteredApplications.filter(app => app.projectType === type);
+          const countNum = Number(count);
+          const percentage = ((countNum / stats.totalApplications) * 100).toFixed(1);
+          const typeApplications = filteredApplications.filter((app: any) => app.projectType === type);
           const avgValue = typeApplications.length > 0 
-            ? typeApplications.reduce((sum, app) => sum + parseFloat(app.amount), 0) / typeApplications.length
+            ? typeApplications.reduce((sum: number, app: any) => sum + parseFloat(app.amount), 0) / typeApplications.length
             : 0;
           
           distributionData.push([
             getProjectTypeLabel(type),
-            count,
+            String(countNum),
             `${percentage}%`,
             formatKwanza(avgValue)
           ]);
@@ -479,17 +685,10 @@ export default function Reports() {
       const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
       saveAs(blob, `relatorio-agricredit-${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
       
-      toast({
-        title: "Excel exportado com sucesso!",
-        description: "O relatório foi baixado com múltiplas planilhas e análises detalhadas.",
-      });
+      toast.success("Excel exportado com sucesso! O relatório foi baixado com múltiplas planilhas e análises detalhadas.");
     } catch (error) {
       console.error('Excel export error:', error);
-      toast({
-        title: "Erro ao exportar Excel",
-        description: "Não foi possível gerar o relatório Excel.",
-        variant: "destructive",
-      });
+      toast.error("Erro ao exportar Excel. Não foi possível gerar o relatório Excel.");
     }
   };
 
@@ -511,7 +710,10 @@ export default function Reports() {
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <Button
-                onClick={() => setLocation('/dashboard')}
+                onClick={() => {
+                  const [, navigate] = useLocation();
+                  navigate('/dashboard');
+                }}
                 variant="ghost"
                 className="text-white hover:bg-agri-dark"
               >

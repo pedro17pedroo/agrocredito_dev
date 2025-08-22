@@ -12,9 +12,14 @@ router.use(authenticateToken);
 
 // Middleware to check admin/financial institution access
 const checkAdminAccess = (req: any, res: any, next: any) => {
+  console.log(`[ADMIN_ACCESS] ${req.method} ${req.path} - User: ${req.user?.id} (${req.user?.userType})`);
+  
   if (req.user.userType !== "admin" && req.user.userType !== "financial_institution") {
+    console.log(`[ADMIN_ACCESS] Access denied for user type: ${req.user.userType}`);
     return res.status(403).json({ message: "Acesso negado" });
   }
+  
+  console.log(`[ADMIN_ACCESS] Access granted for ${req.user.userType}`);
   next();
 };
 
@@ -32,7 +37,9 @@ router.get("/accounts", AccountController.getByFinancialInstitution);
 router.get("/users", UserController.getAll);
 router.post("/users", UserController.create);
 router.patch("/users/:id", UserController.update);
+router.patch("/users/:id/status", UserController.updateStatus);
 router.patch("/users/:id/profile", UserController.assignProfile);
+router.delete("/users/:id", UserController.delete);
 
 // Profile management routes (admin only)
 router.get("/profiles", ProfileController.getAll);

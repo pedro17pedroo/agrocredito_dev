@@ -42,6 +42,10 @@ export class UserController {
   static async getById(req: Request, res: Response) {
     try {
       const { id } = req.params;
+      if (!id) {
+        return res.status(400).json({ message: "ID do utilizador é obrigatório" });
+      }
+      
       const user = await UserModel.findById(id);
       
       if (!user) {
@@ -59,7 +63,13 @@ export class UserController {
 
   static async create(req: Request, res: Response) {
     try {
-      const userData = insertUserSchema.parse(req.body);
+      // Add default password if not provided
+      const requestData = {
+        ...req.body,
+        password: req.body.password || 'AgriCredito123!' // Default password
+      };
+      
+      const userData = insertUserSchema.parse(requestData);
       
       // Check if user already exists
       const existingUser = await UserModel.findByPhone(userData.phone) || 
@@ -93,6 +103,10 @@ export class UserController {
   static async update(req: Request, res: Response) {
     try {
       const { id } = req.params;
+      if (!id) {
+        return res.status(400).json({ message: "ID do utilizador é obrigatório" });
+      }
+      
       const updateData = req.body;
 
       // If password is being updated, hash it
@@ -118,6 +132,10 @@ export class UserController {
   static async assignProfile(req: Request, res: Response) {
     try {
       const { id } = req.params;
+      if (!id) {
+        return res.status(400).json({ message: "ID do utilizador é obrigatório" });
+      }
+      
       const { profileId } = req.body;
 
       if (!profileId) {
@@ -134,6 +152,54 @@ export class UserController {
       res.json({ message: "Perfil atribuído com sucesso" });
     } catch (error) {
       console.error("Assign profile error:", error);
+      res.status(500).json({ message: "Erro interno do servidor" });
+    }
+  }
+
+  static async updateStatus(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      if (!id) {
+        return res.status(400).json({ message: "ID do utilizador é obrigatório" });
+      }
+      
+      const { isActive } = req.body;
+
+      if (typeof isActive !== 'boolean') {
+        return res.status(400).json({ message: "Estado é obrigatório e deve ser um valor booleano" });
+      }
+
+      const user = await UserModel.update(id, { isActive });
+      
+      if (!user) {
+        return res.status(404).json({ message: "Utilizador não encontrado" });
+      }
+
+      // Remove password from response
+      const { password, ...sanitizedUser } = user;
+      res.json(sanitizedUser);
+    } catch (error) {
+      console.error("Update user status error:", error);
+      res.status(500).json({ message: "Erro interno do servidor" });
+    }
+  }
+
+  static async delete(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      if (!id) {
+        return res.status(400).json({ message: "ID do utilizador é obrigatório" });
+      }
+
+      const deleted = await UserModel.delete(id);
+      
+      if (!deleted) {
+        return res.status(404).json({ message: "Utilizador não encontrado" });
+      }
+
+      res.json({ message: "Utilizador eliminado com sucesso" });
+    } catch (error) {
+      console.error("Delete user error:", error);
       res.status(500).json({ message: "Erro interno do servidor" });
     }
   }

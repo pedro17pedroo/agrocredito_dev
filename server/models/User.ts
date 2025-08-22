@@ -63,9 +63,12 @@ export class UserModel {
   }
 
   static async update(id: string, userData: Partial<InsertUser>): Promise<User | undefined> {
+    // Remove any timestamp fields from userData to avoid conflicts
+    const { createdAt, updatedAt, ...cleanUserData } = userData as any;
+    
     await db
       .update(users)
-      .set({ ...userData, updatedAt: new Date() })
+      .set(cleanUserData)
       .where(eq(users.id, id));
 
     // Fetch the updated user
@@ -116,5 +119,20 @@ export class UserModel {
       .from(users)
       .where(eq(users.userType, 'financial_institution'))
       .orderBy(desc(users.createdAt));
+  }
+
+  static async delete(id: string): Promise<boolean> {
+    // First check if user exists
+    const existingUser = await this.findById(id);
+    if (!existingUser) {
+      return false;
+    }
+
+    // Delete the user
+    await db
+      .delete(users)
+      .where(eq(users.id, id));
+    
+    return true;
   }
 }
