@@ -44,10 +44,53 @@ app.use((req, res, next) => {
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
+    
+    // Não expor detalhes técnicos em produção
+    let message = "Ocorreu um erro interno. Tente novamente mais tarde.";
+    
+    // Em desenvolvimento, mostrar mais detalhes
+    if (app.get("env") === "development") {
+      message = err.message || message;
+    } else {
+      // Em produção, usar mensagens amigáveis baseadas no status
+      switch (status) {
+        case 400:
+          message = "Dados inválidos fornecidos";
+          break;
+        case 401:
+          message = "Acesso não autorizado";
+          break;
+        case 403:
+          message = "Acesso negado";
+          break;
+        case 404:
+          message = "Recurso não encontrado";
+          break;
+        case 409:
+          message = "Conflito de dados";
+          break;
+        case 422:
+          message = "Dados fornecidos são inválidos";
+          break;
+        case 429:
+          message = "Muitas tentativas. Tente novamente mais tarde";
+          break;
+        default:
+          message = "Ocorreu um erro interno. Tente novamente mais tarde.";
+      }
+    }
 
-    res.status(status).json({ message });
-    throw err;
+    res.status(status).json({ 
+      success: false,
+      message,
+      ...(app.get("env") === "development" && { error: err.message })
+    });
+    
+    // Log do erro para debugging
+    console.error(`Error ${status}:`, err.message);
+    if (app.get("env") === "development") {
+      console.error(err.stack);
+    }
   });
 
   // importantly only setup vite in development and after

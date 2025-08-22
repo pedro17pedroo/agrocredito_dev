@@ -146,5 +146,38 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Reports endpoint to get all payments for the user
+  app.get("/api/reports/payments", authenticateToken, async (req: any, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ message: "User not authenticated" });
+      }
+      
+      console.log("[REPORTS] User authenticated:", req.user.id, req.user.userType);
+      
+      // Import storage here to avoid circular dependencies
+      const { storage } = await import("../storage");
+      
+      // Get all accounts for the user
+      const accounts = await storage.getAccountsByUserId(req.user.id);
+      console.log("[REPORTS] Found accounts:", accounts.length);
+      
+      const allPayments = [];
+      
+      // Get payments for each account
+      for (const account of accounts) {
+        const payments = await storage.getPaymentsByAccountId(account.id);
+        console.log(`[REPORTS] Account ${account.id} has ${payments.length} payments`);
+        allPayments.push(...payments);
+      }
+      
+      console.log("[REPORTS] Total payments found:", allPayments.length);
+      res.json(allPayments);
+    } catch (error: any) {
+      console.error("Get reports payments error:", error);
+      res.status(500).json({ message: "Erro interno do servidor" });
+    }
+  });
+
   return createServer(app);
 }

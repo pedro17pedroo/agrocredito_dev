@@ -24,6 +24,7 @@ const authenticateToken = async (req: any, res: any, next: any) => {
   const token = authHeader && authHeader.split(' ')[1];
 
   if (!token) {
+    console.log("[AUTH] No token provided for:", req.path);
     return res.status(401).json({ message: "Access token required" });
   }
 
@@ -31,11 +32,14 @@ const authenticateToken = async (req: any, res: any, next: any) => {
     const decoded: any = jwt.verify(token, JWT_SECRET);
     const user = await storage.getUser(decoded.userId);
     if (!user) {
+      console.log("[AUTH] User not found for token:", decoded.userId, "path:", req.path);
       return res.status(401).json({ message: "User not found" });
     }
     req.user = user;
+    console.log("[AUTH] User authenticated:", user.id, user.userType, "for path:", req.path);
     next();
-  } catch (error) {
+  } catch (error: any) {
+    console.log("[AUTH] Invalid token for path:", req.path, "error:", error.message);
     return res.status(403).json({ message: "Invalid token" });
   }
 };
@@ -470,26 +474,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(payments);
     } catch (error) {
       console.error("Get payments error:", error);
-      res.status(500).json({ message: "Erro interno do servidor" });
-    }
-  });
-
-  // Reports endpoint to get all payments for the user
-  app.get("/api/reports/payments", authenticateToken, async (req: any, res) => {
-    try {
-      // Get all accounts for the user
-      const accounts = await storage.getAccountsByUserId(req.user.id);
-      const allPayments = [];
-      
-      // Get payments for each account
-      for (const account of accounts) {
-        const payments = await storage.getPaymentsByAccountId(account.id);
-        allPayments.push(...payments);
-      }
-      
-      res.json(allPayments);
-    } catch (error) {
-      console.error("Get reports payments error:", error);
       res.status(500).json({ message: "Erro interno do servidor" });
     }
   });

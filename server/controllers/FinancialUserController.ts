@@ -4,6 +4,12 @@ import { z } from "zod";
 import { UserModel } from "../models/User";
 import { ProfileModel } from "../models/Profile";
 import { insertUserSchema } from "@shared/schema";
+import { 
+  formatValidationErrors, 
+  formatDuplicationError, 
+  formatSystemError, 
+  createErrorResponse 
+} from "../utils/errorFormatter.js";
 
 // Extended schema for creating internal users
 const createInternalUserSchema = insertUserSchema.extend({
@@ -17,7 +23,7 @@ export class FinancialUserController {
       const user = (req as any).user;
       
       if (!user || user.userType !== "financial_institution") {
-        return res.status(403).json({ message: "Acesso negado" });
+        return res.status(403).json(createErrorResponse("Acesso negado"));
       }
 
       // Determine the institution ID - could be user's own ID or parent institution
@@ -38,7 +44,8 @@ export class FinancialUserController {
       res.json(sanitizedUsers);
     } catch (error) {
       console.error("Get internal users error:", error);
-      res.status(500).json({ message: "Erro interno do servidor" });
+      const errorMessage = formatSystemError(error as Error);
+      res.status(500).json(createErrorResponse(errorMessage));
     }
   }
 
@@ -48,7 +55,7 @@ export class FinancialUserController {
       const user = (req as any).user;
       
       if (!user || user.userType !== "financial_institution") {
-        return res.status(403).json({ message: "Acesso negado" });
+        return res.status(403).json(createErrorResponse("Acesso negado"));
       }
 
       // Get all farmer, company and cooperative users
@@ -63,7 +70,8 @@ export class FinancialUserController {
       res.json(sanitizedClients);
     } catch (error) {
       console.error("Get clients error:", error);
-      res.status(500).json({ message: "Erro interno do servidor" });
+      const errorMessage = formatSystemError(error as Error);
+      res.status(500).json(createErrorResponse(errorMessage));
     }
   }
 
@@ -73,7 +81,7 @@ export class FinancialUserController {
       const user = (req as any).user;
       
       if (!user || user.userType !== "financial_institution") {
-        return res.status(403).json({ message: "Acesso negado" });
+        return res.status(403).json(createErrorResponse("Acesso negado"));
       }
 
       const userData = createInternalUserSchema.parse(req.body);
@@ -81,13 +89,15 @@ export class FinancialUserController {
       // Check if user already exists
       const existingUser = await UserModel.findByPhone(userData.phone);
       if (existingUser) {
-        return res.status(400).json({ message: "Utilizador já existe com este telefone" });
+        const errorMessage = formatDuplicationError("phone", userData.phone);
+        return res.status(400).json(createErrorResponse(errorMessage));
       }
 
       if (userData.email) {
         const existingEmailUser = await UserModel.findByEmail(userData.email);
         if (existingEmailUser) {
-          return res.status(400).json({ message: "Utilizador já existe com este email" });
+          const errorMessage = formatDuplicationError("email", userData.email);
+          return res.status(400).json(createErrorResponse(errorMessage));
         }
       }
 
@@ -113,13 +123,15 @@ export class FinancialUserController {
 
       // Remove password from response
       const { password, ...sanitizedUser } = newUser;
-      res.status(201).json(sanitizedUser);
+      res.status(201).json({ success: true, data: sanitizedUser });
     } catch (error) {
       console.error("Create internal user error:", error);
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Dados inválidos", errors: error.errors });
+        const formattedError = formatValidationErrors(error);
+        return res.status(400).json(createErrorResponse(formattedError.message, formattedError.details));
       }
-      res.status(500).json({ message: "Erro interno do servidor" });
+      const errorMessage = formatSystemError(error as Error);
+      res.status(500).json(createErrorResponse(errorMessage));
     }
   }
 
@@ -136,7 +148,7 @@ export class FinancialUserController {
       // Check if the user to be updated belongs to this institution
       const targetUser = await UserModel.findById(id);
       if (!targetUser || targetUser.parentInstitutionId !== user.id) {
-        return res.status(404).json({ message: "Utilizador não encontrado ou não pertence à sua instituição" });
+        return res.status(404).json(createErrorResponse("Utilizador não encontrado ou não pertence à sua instituição"));
       }
 
       const updateData = req.body;
@@ -149,12 +161,12 @@ export class FinancialUserController {
       const updatedUser = await UserModel.update(id, updateData);
       
       if (!updatedUser) {
-        return res.status(404).json({ message: "Utilizador não encontrado" });
+        return res.status(404).json(createErrorResponse("Utilizador não encontrado"));
       }
 
       // Remove password from response
       const { password, ...sanitizedUser } = updatedUser;
-      res.json(sanitizedUser);
+      res.json({ success: true, data: sanitizedUser });
     } catch (error) {
       console.error("Update internal user error:", error);
       res.status(500).json({ message: "Erro interno do servidor" });
@@ -174,18 +186,18 @@ export class FinancialUserController {
       // Check if the user to be deactivated belongs to this institution
       const targetUser = await UserModel.findById(id);
       if (!targetUser || targetUser.parentInstitutionId !== user.id) {
-        return res.status(404).json({ message: "Utilizador não encontrado ou não pertence à sua instituição" });
+        return res.status(404).json(createErrorResponse("Utilizador não encontrado ou não pertence à sua instituição"));
       }
 
       const updatedUser = await UserModel.update(id, { isActive: false });
       
       if (!updatedUser) {
-        return res.status(404).json({ message: "Utilizador não encontrado" });
+        return res.status(404).json(createErrorResponse("Utilizador não encontrado"));
       }
 
       // Remove password from response
       const { password, ...sanitizedUser } = updatedUser;
-      res.json(sanitizedUser);
+      res.json({ success: true, data: sanitizedUser });
     } catch (error) {
       console.error("Deactivate user error:", error);
       res.status(500).json({ message: "Erro interno do servidor" });
@@ -206,27 +218,28 @@ export class FinancialUserController {
       // Check if the user belongs to this institution
       const targetUser = await UserModel.findById(id);
       if (!targetUser || targetUser.parentInstitutionId !== user.id) {
-        return res.status(404).json({ message: "Utilizador não encontrado ou não pertence à sua instituição" });
+        return res.status(404).json(createErrorResponse("Utilizador não encontrado ou não pertence à sua instituição"));
       }
 
       // Check if profile exists
       const profile = await ProfileModel.findById(profileId);
       if (!profile) {
-        return res.status(404).json({ message: "Perfil não encontrado" });
+        return res.status(404).json(createErrorResponse("Perfil não encontrado"));
       }
 
       const updatedUser = await UserModel.assignProfile(id, profileId);
       
       if (!updatedUser) {
-        return res.status(404).json({ message: "Utilizador não encontrado" });
+        return res.status(404).json(createErrorResponse("Utilizador não encontrado"));
       }
 
       // Remove password from response
       const { password, ...sanitizedUser } = updatedUser;
-      res.json(sanitizedUser);
+      res.json({ success: true, data: sanitizedUser });
     } catch (error) {
       console.error("Assign profile error:", error);
-      res.status(500).json({ message: "Erro interno do servidor" });
+      const errorMessage = formatSystemError(error as Error);
+      res.status(500).json(createErrorResponse(errorMessage));
     }
   }
 

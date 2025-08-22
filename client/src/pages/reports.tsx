@@ -161,74 +161,12 @@ const Progress = ({ value, className = '', ...props }: any) => (
   </div>
 );
 
-// Hooks simulados
-const useAuth = () => {
-  return {
-    user: {
-      id: '1',
-      fullName: 'Usuário do Sistema',
-      email: 'usuario@agrocredito.ao'
-    }
-  };
-};
+// Hooks reais
+import { useAuth } from '../hooks/use-auth';
+import { useQuery } from '@tanstack/react-query';
+import { apiRequest } from '../lib/queryClient';
 
-const useQuery = ({ queryKey }: { queryKey: string[] }) => {
-  // Dados simulados para demonstração
-  const mockApplications: any[] = [
-    {
-      id: '1',
-      amount: '5000000',
-      status: 'approved',
-      projectType: 'corn',
-      createdAt: new Date(),
-      userId: '1',
-      accountId: '1',
-      description: 'Cultivo de milho',
-      purpose: 'Expansão da produção'
-    },
-    {
-      id: '2',
-      amount: '2500000',
-      status: 'pending',
-      projectType: 'cattle',
-      createdAt: new Date(),
-      userId: '1',
-      accountId: '1',
-      description: 'Criação de gado',
-      purpose: 'Aquisição de animais'
-    }
-  ];
-  
-  const mockPayments: any[] = [
-    {
-      id: '1',
-      amount: '1000000',
-      paymentDate: new Date(),
-      applicationId: '1',
-      accountId: '1',
-      method: 'bank_transfer',
-      status: 'completed'
-    }
-  ];
-  
-  if (queryKey[0] === '/api/credit-applications/user') {
-    return { data: mockApplications, isLoading: false };
-  }
-  if (queryKey[0] === '/api/accounts/user') {
-    return { data: [], isLoading: false };
-  }
-  if (queryKey[0] === '/api/reports/payments') {
-    return { data: mockPayments, isLoading: false };
-  }
-  
-  return { data: [], isLoading: false };
-};
-
-const useLocation = (): [string, (path: string) => void] => {
-  return [window.location.pathname, (path: string) => {
-    window.history.pushState({}, '', path);
-  }];
-};
+import { useLocation } from 'wouter';
 
 // Extend jsPDF type to include lastAutoTable property
 declare module 'jspdf' {
@@ -248,16 +186,31 @@ export default function Reports() {
     to: endOfMonth(new Date()),
   });
 
-  const { data: applications = [], isLoading: applicationsLoading } = useQuery({
+  const { data: applications = [], isLoading: applicationsLoading } = useQuery<CreditApplication[]>({
     queryKey: ["/api/credit-applications/user"],
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/credit-applications/user");
+      return response.json();
+    },
+    enabled: !!user,
   });
 
-  const { data: accounts = [], isLoading: accountsLoading } = useQuery({
+  const { data: accounts = [], isLoading: accountsLoading } = useQuery<Account[]>({
     queryKey: ["/api/accounts/user"],
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/accounts/user");
+      return response.json();
+    },
+    enabled: !!user,
   });
 
-  const { data: allPayments = [], isLoading: paymentsLoading } = useQuery({
+  const { data: allPayments = [], isLoading: paymentsLoading } = useQuery<Payment[]>({
     queryKey: ["/api/reports/payments"],
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/reports/payments");
+      return response.json();
+    },
+    enabled: !!user,
   });
 
   const isLoading = applicationsLoading || accountsLoading || paymentsLoading;
@@ -598,7 +551,7 @@ export default function Reports() {
         applicationData.push(
           [''],
           ['TOTAIS:', '', '', '', '', '', '', ''],
-          ['Total Geral:', '', filteredApplications.reduce((sum, app) => sum + parseFloat(app.amount), 0), formatKwanza(filteredApplications.reduce((sum, app) => sum + parseFloat(app.amount), 0)), '', '', '', '']
+          ['Total Geral:', '', filteredApplications.reduce((sum, app) => sum + parseFloat(app.amount), 0).toString(), formatKwanza(filteredApplications.reduce((sum, app) => sum + parseFloat(app.amount), 0)), '', '', '', '']
         );
         
         const finalApplicationsSheet = XLSX.utils.aoa_to_sheet(applicationData);
@@ -710,12 +663,9 @@ export default function Reports() {
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <Button
-                onClick={() => {
-                  const [, navigate] = useLocation();
-                  navigate('/dashboard');
-                }}
+                onClick={() => setLocation('/dashboard')}
                 variant="ghost"
-                className="text-white hover:bg-agri-dark"
+                className="text-white hover:bg-agri-dark hover:text-white"
               >
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Voltar ao Dashboard

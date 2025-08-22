@@ -1,14 +1,14 @@
 import { useState } from "react";
 import { useRoute } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/hooks/use-auth";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Textarea } from "@/components/ui/textarea";
-import { Separator } from "@/components/ui/separator";
-import { formatKwanza, formatDate } from "@/lib/angola-utils";
+import { useToast } from "../hooks/use-toast";
+import { useAuth } from "../hooks/use-auth";
+import { Button } from "../components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
+import { Badge } from "../components/ui/badge";
+import { Textarea } from "../components/ui/textarea";
+import { Separator } from "../components/ui/separator";
+import { formatKwanza, formatDate } from "../lib/angola-utils";
 import { 
   ArrowLeft,
   Check, 
@@ -30,7 +30,7 @@ import {
   Eye,
   Download
 } from "lucide-react";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest } from "../lib/queryClient";
 import { useLocation } from "wouter";
 
 interface CreditApplication {
@@ -123,7 +123,22 @@ export default function FinancialApplicationDetails() {
 
   // Query para buscar os detalhes da aplicação
   const { data: application, isLoading } = useQuery<CreditApplication>({
-    queryKey: ["/api/admin/credit-applications", applicationId],
+    queryKey: ["/api/credit-applications", applicationId],
+    queryFn: async () => {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(`/api/credit-applications/${applicationId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error('Falha ao carregar solicitação');
+      }
+      
+      return response.json();
+    },
     enabled: !!applicationId,
   });
 
@@ -135,7 +150,7 @@ export default function FinancialApplicationDetails() {
       rejectionReason?: string; 
     }) => {
       const response = await apiRequest(
-        "PUT",
+        "PATCH",
         `/api/admin/credit-applications/${id}/status`,
         { status, rejectionReason }
       );
@@ -144,13 +159,24 @@ export default function FinancialApplicationDetails() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/credit-applications"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/credit-applications", applicationId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/credit-applications", applicationId] });
       toast({
         title: "Status atualizado",
         description: "O status da solicitação foi atualizado com sucesso.",
       });
       setShowRejectDialog(false);
       setRejectionReason("");
+      
+      // Navegar de volta ao dashboard após atualizar o status
+      setTimeout(() => {
+        if (user?.userType === "admin") {
+          setLocation("/admin-dashboard");
+        } else if (user?.userType === "financial_institution") {
+          setLocation("/financial-dashboard");
+        } else {
+          setLocation("/dashboard");
+        }
+      }, 1500); // Aguarda 1.5 segundos para mostrar o toast
     },
     onError: (error: any) => {
       toast({
@@ -579,16 +605,15 @@ export default function FinancialApplicationDetails() {
                     <Button
                       onClick={handleStartReview}
                       disabled={updateApplicationStatus.isPending}
-                      className="w-full"
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white"
                     >
                       <Clock className="h-4 w-4 mr-2" />
                       Iniciar Análise
                     </Button>
                     <Button
-                      variant="outline"
                       onClick={handleApprove}
                       disabled={updateApplicationStatus.isPending}
-                      className="w-full"
+                      className="w-full bg-green-600 hover:bg-green-700 text-white"
                     >
                       <Check className="h-4 w-4 mr-2" />
                       Aprovar Diretamente

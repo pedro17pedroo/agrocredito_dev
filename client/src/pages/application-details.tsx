@@ -90,7 +90,22 @@ export default function ApplicationDetails() {
   const applicationId = params.id;
 
   const { data: application, isLoading } = useQuery<CreditApplicationWithDocuments>({
-    queryKey: ['/api/credit-applications/user', applicationId],
+    queryKey: ['/api/credit-applications', applicationId],
+    queryFn: async () => {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(`/api/credit-applications/${applicationId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error('Falha ao carregar solicitação');
+      }
+      
+      return response.json();
+    },
     enabled: !!applicationId,
   });
 

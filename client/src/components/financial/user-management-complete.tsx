@@ -14,6 +14,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { extractErrorMessage, formatErrorForDisplay } from "@/utils/errorHandler";
 import { 
   Users, 
   UserPlus, 
@@ -108,12 +109,14 @@ export default function UserManagementComplete() {
       });
     },
     onError: (error: any) => {
-      toast({
-        title: "Erro",
-        description: error.message || "Erro ao criar utilizador",
-        variant: "destructive",
-      });
-    },
+          const { message, details } = extractErrorMessage(error, "Erro ao criar utilizador");
+          
+          toast({
+            title: "Erro ao criar utilizador",
+            description: formatErrorForDisplay(message, details),
+            variant: "destructive",
+          });
+        },
   });
 
   const updateUser = useMutation({
@@ -131,12 +134,14 @@ export default function UserManagementComplete() {
       });
     },
     onError: (error: any) => {
-      toast({
-        title: "Erro",
-        description: error.message || "Erro ao atualizar utilizador",
-        variant: "destructive",
-      });
-    },
+          const { message } = extractErrorMessage(error, "Erro ao atualizar utilizador");
+          
+          toast({
+            title: "Erro ao atualizar utilizador",
+            description: message,
+            variant: "destructive",
+          });
+        },
   });
 
   const deactivateUser = useMutation({
@@ -151,12 +156,14 @@ export default function UserManagementComplete() {
       });
     },
     onError: (error: any) => {
-      toast({
-        title: "Erro",
-        description: error.message || "Erro ao desativar utilizador",
-        variant: "destructive",
-      });
-    },
+          const { message } = extractErrorMessage(error, "Erro ao desativar utilizador");
+          
+          toast({
+            title: "Erro ao desativar utilizador",
+            description: message,
+            variant: "destructive",
+          });
+        },
   });
 
   const assignProfile = useMutation({

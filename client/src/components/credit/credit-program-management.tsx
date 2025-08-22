@@ -3,17 +3,17 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useToast } from "@/hooks/use-toast";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Separator } from "@/components/ui/separator";
-import { formatKwanza } from "@/lib/angola-utils";
+import { useToast } from "../../hooks/use-toast";
+import { Button } from "../ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
+import { Badge } from "../ui/badge";
+import { Input } from "../ui/input";
+import { Textarea } from "../ui/textarea";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "../ui/form";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../ui/dialog";
+import { Checkbox } from "../ui/checkbox";
+import { Separator } from "../ui/separator";
+import { formatKwanza } from "../../lib/angola-utils";
 import { 
   Plus, 
   Edit, 
@@ -26,7 +26,7 @@ import {
   Calendar,
   DollarSign
 } from "lucide-react";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest } from "../../lib/queryClient";
 
 interface CreditProgram {
   id: string;
@@ -76,6 +76,11 @@ const programSchema = z.object({
 
 type ProgramForm = z.infer<typeof programSchema>;
 
+// Tipo para dados formatados para envio ao backend
+type FormattedProgramData = Omit<ProgramForm, 'projectTypes'> & {
+  projectTypes: string; // JSON string no backend
+};
+
 export default function CreditProgramManagement() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -108,7 +113,7 @@ export default function CreditProgramManagement() {
 
   // Create program mutation
   const createProgram = useMutation({
-    mutationFn: async (data: ProgramForm) => {
+    mutationFn: async (data: FormattedProgramData) => {
       return apiRequest("POST", "/api/credit-programs", data);
     },
     onSuccess: () => {
@@ -131,7 +136,7 @@ export default function CreditProgramManagement() {
 
   // Update program mutation
   const updateProgram = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: ProgramForm }) => {
+    mutationFn: async ({ id, data }: { id: string; data: FormattedProgramData }) => {
       return apiRequest("PUT", `/api/credit-programs/${id}`, data);
     },
     onSuccess: () => {
@@ -223,10 +228,21 @@ export default function CreditProgramManagement() {
   };
 
   const onSubmit = (data: ProgramForm) => {
+    // Converter strings para números para compatibilidade com o backend
+    const formattedData: FormattedProgramData = {
+      ...data,
+      projectTypes: JSON.stringify(data.projectTypes), // Converter array para JSON string
+      minAmount: parseFloat(data.minAmount).toString(),
+      maxAmount: parseFloat(data.maxAmount).toString(),
+      interestRate: parseFloat(data.interestRate).toString(),
+      effortRate: parseFloat(data.effortRate).toString(),
+      processingFee: data.processingFee ? parseFloat(data.processingFee).toString() : "0",
+    };
+
     if (selectedProgram) {
-      updateProgram.mutate({ id: selectedProgram.id, data });
+      updateProgram.mutate({ id: selectedProgram.id, data: formattedData });
     } else {
-      createProgram.mutate(data);
+      createProgram.mutate(formattedData);
     }
   };
 
@@ -386,7 +402,7 @@ export default function CreditProgramManagement() {
       </div>
 
       {/* Create/Edit Dialog */}
-      <Dialog open={showCreateDialog || showEditDialog} onOpenChange={(open) => {
+      <Dialog open={showCreateDialog || showEditDialog} onOpenChange={(open: boolean) => {
         if (!open) {
           setShowCreateDialog(false);
           setShowEditDialog(false);
@@ -410,7 +426,7 @@ export default function CreditProgramManagement() {
                 <FormField
                   control={form.control}
                   name="name"
-                  render={({ field }) => (
+                  render={({ field }: any) => (
                     <FormItem>
                       <FormLabel>Nome do Programa</FormLabel>
                       <FormControl>
@@ -424,7 +440,7 @@ export default function CreditProgramManagement() {
                 <FormField
                   control={form.control}
                   name="description"
-                  render={({ field }) => (
+                  render={({ field }: { field: any }) => (
                     <FormItem>
                       <FormLabel>Descrição (opcional)</FormLabel>
                       <FormControl>
@@ -449,7 +465,7 @@ export default function CreditProgramManagement() {
                             key={option.value}
                             control={form.control}
                             name="projectTypes"
-                            render={({ field }) => {
+                            render={({ field }: any) => {
                               return (
                                 <FormItem
                                   key={option.value}
@@ -458,12 +474,12 @@ export default function CreditProgramManagement() {
                                   <FormControl>
                                     <Checkbox
                                       checked={field.value?.includes(option.value)}
-                                      onCheckedChange={(checked) => {
+                                      onCheckedChange={(checked: boolean) => {
                                         return checked
                                           ? field.onChange([...field.value, option.value])
                                           : field.onChange(
                                               field.value?.filter(
-                                                (value) => value !== option.value
+                                                (value: string) => value !== option.value
                                               )
                                             )
                                       }}
@@ -488,7 +504,7 @@ export default function CreditProgramManagement() {
                 <FormField
                   control={form.control}
                   name="minAmount"
-                  render={({ field }) => (
+                  render={({ field }: { field: any }) => (
                     <FormItem>
                       <FormLabel>Valor Mínimo (AOA)</FormLabel>
                       <FormControl>
@@ -502,7 +518,7 @@ export default function CreditProgramManagement() {
                 <FormField
                   control={form.control}
                   name="maxAmount"
-                  render={({ field }) => (
+                  render={({ field }: { field: any }) => (
                     <FormItem>
                       <FormLabel>Valor Máximo (AOA)</FormLabel>
                       <FormControl>
@@ -518,7 +534,7 @@ export default function CreditProgramManagement() {
                 <FormField
                   control={form.control}
                   name="minTerm"
-                  render={({ field }) => (
+                  render={({ field }: { field: any }) => (
                     <FormItem>
                       <FormLabel>Prazo Mínimo (meses)</FormLabel>
                       <FormControl>
@@ -526,7 +542,7 @@ export default function CreditProgramManagement() {
                           {...field} 
                           type="number" 
                           placeholder="6"
-                          onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                          onChange={(e: any) => field.onChange(parseInt(e.target.value) || 0)}
                         />
                       </FormControl>
                       <FormMessage />
@@ -537,7 +553,7 @@ export default function CreditProgramManagement() {
                 <FormField
                   control={form.control}
                   name="maxTerm"
-                  render={({ field }) => (
+                  render={({ field }: { field: any }) => (
                     <FormItem>
                       <FormLabel>Prazo Máximo (meses)</FormLabel>
                       <FormControl>
@@ -545,7 +561,7 @@ export default function CreditProgramManagement() {
                           {...field} 
                           type="number" 
                           placeholder="60"
-                          onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => field.onChange(parseInt(e.target.value) || 0)}
                         />
                       </FormControl>
                       <FormMessage />
@@ -558,7 +574,7 @@ export default function CreditProgramManagement() {
                 <FormField
                   control={form.control}
                   name="interestRate"
-                  render={({ field }) => (
+                  render={({ field }: { field: any }) => (
                     <FormItem>
                       <FormLabel>Taxa de Juros Anual (%)</FormLabel>
                       <FormControl>
@@ -572,7 +588,7 @@ export default function CreditProgramManagement() {
                 <FormField
                   control={form.control}
                   name="effortRate"
-                  render={({ field }) => (
+                  render={({ field }: { field: any }) => (
                     <FormItem>
                       <FormLabel>Taxa de Esforço Máxima (%)</FormLabel>
                       <FormControl>
@@ -586,7 +602,7 @@ export default function CreditProgramManagement() {
                 <FormField
                   control={form.control}
                   name="processingFee"
-                  render={({ field }) => (
+                  render={({ field }: { field: any }) => (
                     <FormItem>
                       <FormLabel>Taxa de Processamento (%)</FormLabel>
                       <FormControl>
