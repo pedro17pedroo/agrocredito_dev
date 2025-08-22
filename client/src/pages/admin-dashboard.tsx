@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { 
   Sprout, LogOut, Users, FileText, TrendingUp, CheckCircle, XCircle, Eye, 
   Settings, UserPlus, Shield, BarChart3, CreditCard, Building2, Tractor,
-  Menu, X, Home, DollarSign, Edit, Trash2
+  Menu, X, Home, DollarSign, Edit, Trash2, Calendar, Download, Filter, Activity
 } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
@@ -22,9 +22,26 @@ import { usePermissions } from "../hooks/use-permissions";
 import { PermissionGate } from "../components/PermissionGate";
 import { apiRequest } from "../lib/queryClient";
 import { formatKwanza, getProjectTypeLabel, getStatusLabel } from "../lib/angola-utils";
-import { format } from "date-fns";
+import { format, subDays, subMonths, startOfMonth, endOfMonth, isWithinInterval } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { 
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+  PieChart, Pie, Cell, LineChart, Line, AreaChart, Area
+} from 'recharts';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import * as XLSX from 'xlsx';
+import html2canvas from 'html2canvas';
 import type { CreditApplication, User, Profile, Permission } from "@shared/schema";
+
+// Extend jsPDF type to include lastAutoTable property
+declare module 'jspdf' {
+  interface jsPDF {
+    lastAutoTable?: {
+      finalY: number;
+    };
+  }
+}
 
 type AdminSection = 'dashboard' | 'users' | 'applications' | 'reports' | 'profiles' | 'permissions';
 
@@ -82,6 +99,14 @@ export default function AdminDashboard() {
     projectType: 'all',
     minAmount: '',
     search: ''
+  });
+
+  // Reports filters state
+  const [reportFilters, setReportFilters] = useState({
+    dateRange: '30', // últimos 30 dias
+    startDate: '',
+    endDate: '',
+    reportType: 'overview' // overview, applications, users, financial
   });
 
   // Query hooks - all must be called before any early returns
@@ -1410,6 +1435,593 @@ export default function AdminDashboard() {
     </Dialog>
   );
 
+  // Cores para os gráficos
+  const CHART_COLORS = ['#10B981', '#3B82F6', '#F59E0B', '#EF4444', '#8B5CF6', '#06B6D4'];
+
+  // Função para calcular dados dos relatórios
+  const getReportData = useMemo(() => {
+    if (!allApplications.length) return {
+      statusData: [],
+      projectTypeData: [],
+      monthlyData: [],
+      amountRangeData: [],
+      totalStats: {
+        totalApplications: 0,
+        totalAmount: 0,
+        approvedApplications: 0,
+        approvedAmount: 0,
+        rejectedApplications: 0,
+        pendingApplications: 0
+      }
+    };
+
+    // Filtrar aplicações por data se necessário
+    let filteredApps = allApplications;
+    const now = new Date();
+    
+    if (reportFilters.dateRange !== 'all') {
+      const days = parseInt(reportFilters.dateRange);
+      const startDate = subDays(now, days);
+      filteredApps = allApplications.filter(app => 
+        new Date(app.createdAt) >= startDate
+      );
+    }
+
+    if (reportFilters.startDate && reportFilters.endDate) {
+      const start = new Date(reportFilters.startDate);
+      const end = new Date(reportFilters.endDate);
+      filteredApps = allApplications.filter(app => 
+        isWithinInterval(new Date(app.createdAt), { start, end })
+      );
+    }
+
+    // Dados por status
+    const statusCounts = filteredApps.reduce((acc, app) => {
+      const status = app.status || 'pending';
+      acc[status] = (acc[status] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    const statusData = Object.entries(statusCounts).map(([status, count]) => ({
+      name: getStatusLabel(status).label,
+      value: count,
+      color: status === 'approved' ? '#10B981' : status === 'rejected' ? '#EF4444' : '#F59E0B'
+    }));
+
+    // Dados por tipo de projeto
+    const projectTypeCounts = filteredApps.reduce((acc, app) => {
+      const type = app.projectType || 'other';
+      acc[type] = (acc[type] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    const projectTypeData = Object.entries(projectTypeCounts).map(([type, count]) => ({
+      name: getProjectTypeLabel(type),
+      value: count
+    }));
+
+    // Dados mensais (últimos 6 meses)
+    const monthlyData = [];
+    for (let i = 5; i >= 0; i--) {
+      const date = subMonths(now, i);
+      const monthStart = startOfMonth(date);
+      const monthEnd = endOfMonth(date);
+      
+      const monthApps = allApplications.filter(app => 
+        isWithinInterval(new Date(app.createdAt), { start: monthStart, end: monthEnd })
+      );
+      
+      monthlyData.push({
+        month: format(date, 'MMM yyyy', { locale: ptBR }),
+        total: monthApps.length,
+        approved: monthApps.filter(app => app.status === 'approved').length,
+        rejected: monthApps.filter(app => app.status === 'rejected').length,
+        pending: monthApps.filter(app => app.status === 'pending').length
+      });
+    }
+
+    // Dados por faixa de valor
+    const amountRanges = [
+      { min: 0, max: 500000, label: 'Até 500K' },
+      { min: 500000, max: 1000000, label: '500K - 1M' },
+      { min: 1000000, max: 5000000, label: '1M - 5M' },
+      { min: 5000000, max: 10000000, label: '5M - 10M' },
+      { min: 10000000, max: Infinity, label: 'Acima de 10M' }
+    ];
+
+    const amountRangeData = amountRanges.map(range => {
+      const count = filteredApps.filter(app => 
+        app.amount >= range.min && app.amount < range.max
+      ).length;
+      return {
+        name: range.label,
+        value: count
+      };
+    }).filter(item => item.value > 0);
+
+    // Estatísticas totais
+    const totalStats = {
+      totalApplications: filteredApps.length,
+      totalAmount: filteredApps.reduce((sum, app) => sum + app.amount, 0),
+      approvedApplications: filteredApps.filter(app => app.status === 'approved').length,
+      approvedAmount: filteredApps.filter(app => app.status === 'approved').reduce((sum, app) => sum + app.amount, 0),
+      rejectedApplications: filteredApps.filter(app => app.status === 'rejected').length,
+      pendingApplications: filteredApps.filter(app => app.status === 'pending').length
+    };
+
+    return {
+      statusData,
+      projectTypeData,
+      monthlyData,
+      amountRangeData,
+      totalStats
+    };
+  }, [allApplications, reportFilters]);
+
+  // Função para exportar relatório em PDF com gráficos
+  const exportToPDF = async () => {
+    const { totalStats, statusData, projectTypeData, monthlyData } = getReportData;
+    
+    try {
+      const doc = new jsPDF('p', 'mm', 'a4');
+      let yPosition = 20;
+      
+      // Cabeçalho
+      doc.setFontSize(20);
+      doc.setTextColor(34, 139, 34); // Verde
+      doc.text('Relatório AgroCrédito', 20, yPosition);
+      yPosition += 15;
+      
+      doc.setFontSize(12);
+      doc.setTextColor(0, 0, 0); // Preto
+      doc.text(`Gerado em: ${format(new Date(), 'dd/MM/yyyy HH:mm', { locale: ptBR })}`, 20, yPosition);
+      yPosition += 10;
+      
+      if (reportFilters.startDate && reportFilters.endDate) {
+        doc.text(`Período: ${format(new Date(reportFilters.startDate), 'dd/MM/yyyy')} - ${format(new Date(reportFilters.endDate), 'dd/MM/yyyy')}`, 20, yPosition);
+        yPosition += 15;
+      }
+      
+      // Estatísticas principais em caixas
+      doc.setFontSize(14);
+      doc.setTextColor(34, 139, 34);
+      doc.text('Resumo Executivo', 20, yPosition);
+      yPosition += 10;
+      
+      const statsBoxes = [
+        { label: 'Total de Solicitações', value: totalStats.totalApplications.toString(), x: 20, width: 40 },
+        { label: 'Valor Total', value: formatKwanza(totalStats.totalAmount), x: 70, width: 50 },
+        { label: 'Taxa de Aprovação', value: `${((totalStats.approvedApplications / totalStats.totalApplications) * 100 || 0).toFixed(1)}%`, x: 130, width: 40 }
+      ];
+      
+      statsBoxes.forEach(box => {
+        doc.setDrawColor(34, 139, 34);
+        doc.setLineWidth(0.5);
+        doc.rect(box.x, yPosition, box.width, 20);
+        
+        doc.setFontSize(8);
+        doc.setTextColor(100, 100, 100);
+        doc.text(box.label, box.x + 2, yPosition + 6);
+        
+        doc.setFontSize(12);
+        doc.setTextColor(0, 0, 0);
+        doc.text(box.value, box.x + 2, yPosition + 15);
+      });
+      
+      yPosition += 35;
+      
+      // Capturar gráfico de pizza (Status)
+      const pieChartElement = document.querySelector('[data-chart="status-pie"]') as HTMLElement;
+      if (pieChartElement) {
+        try {
+          const canvas = await html2canvas(pieChartElement, {
+            backgroundColor: '#ffffff',
+            scale: 2,
+            useCORS: true
+          });
+          
+          const imgData = canvas.toDataURL('image/png');
+          doc.setFontSize(12);
+          doc.setTextColor(34, 139, 34);
+          doc.text('Distribuição por Status', 20, yPosition);
+          yPosition += 10;
+          
+          doc.addImage(imgData, 'PNG', 20, yPosition, 80, 60);
+          yPosition += 70;
+        } catch (error) {
+          console.warn('Erro ao capturar gráfico de pizza:', error);
+        }
+      }
+      
+      // Capturar gráfico de barras (Tipo de Projeto)
+      const barChartElement = document.querySelector('[data-chart="project-type-bar"]') as HTMLElement;
+      if (barChartElement && yPosition < 200) {
+        try {
+          const canvas = await html2canvas(barChartElement, {
+            backgroundColor: '#ffffff',
+            scale: 2,
+            useCORS: true
+          });
+          
+          const imgData = canvas.toDataURL('image/png');
+          doc.setFontSize(12);
+          doc.setTextColor(34, 139, 34);
+          doc.text('Distribuição por Tipo de Projeto', 110, yPosition - 60);
+          
+          doc.addImage(imgData, 'PNG', 110, yPosition - 50, 80, 60);
+        } catch (error) {
+          console.warn('Erro ao capturar gráfico de barras:', error);
+        }
+      }
+      
+      // Nova página para tabelas
+      doc.addPage();
+      yPosition = 20;
+      
+      // Tabela detalhada de aplicações
+      doc.setFontSize(14);
+      doc.setTextColor(34, 139, 34);
+      doc.text('Detalhes das Solicitações', 20, yPosition);
+      yPosition += 10;
+      
+      const tableData = allApplications.slice(0, 50).map(app => [
+        app.projectName || 'N/A',
+        (app.user?.fullName || 'N/A').substring(0, 20),
+        formatKwanza(app.amount),
+        getStatusLabel(app.status || 'pending').label,
+        getProjectTypeLabel(app.projectType || 'other').substring(0, 15),
+        format(new Date(app.createdAt), 'dd/MM/yy', { locale: ptBR })
+      ]);
+      
+      autoTable(doc, {
+         head: [['Projeto', 'Solicitante', 'Valor', 'Status', 'Tipo', 'Data']],
+         body: tableData,
+         startY: yPosition,
+         styles: { 
+           fontSize: 8,
+           cellPadding: 2
+         },
+         headStyles: {
+           fillColor: [34, 139, 34],
+           textColor: [255, 255, 255],
+           fontSize: 9
+         },
+         alternateRowStyles: {
+           fillColor: [245, 245, 245]
+         },
+         columnStyles: {
+           0: { cellWidth: 35 },
+           1: { cellWidth: 30 },
+           2: { cellWidth: 25 },
+           3: { cellWidth: 20 },
+           4: { cellWidth: 25 },
+           5: { cellWidth: 20 }
+         }
+       });
+      
+      // Tabela de resumo por status
+       const finalY = doc.lastAutoTable!.finalY + 15;
+      
+      doc.setFontSize(12);
+      doc.setTextColor(34, 139, 34);
+      doc.text('Resumo por Status', 20, finalY);
+      
+      const statusSummary = statusData.map(item => [
+        item.name,
+        Number(item.value).toString(),
+        `${((Number(item.value) / totalStats.totalApplications) * 100).toFixed(1)}%`
+      ]);
+      
+      autoTable(doc, {
+         head: [['Status', 'Quantidade', 'Percentual']],
+         body: statusSummary,
+         startY: finalY + 5,
+         styles: { 
+           fontSize: 10,
+           cellPadding: 3
+         },
+         headStyles: {
+           fillColor: [34, 139, 34],
+           textColor: [255, 255, 255]
+         },
+         columnStyles: {
+           0: { cellWidth: 60 },
+           1: { cellWidth: 30, halign: 'center' },
+           2: { cellWidth: 30, halign: 'center' }
+         }
+       });
+      
+      // Rodapé
+      const pageCount = doc.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
+        doc.setTextColor(128, 128, 128);
+        doc.text(`Página ${i} de ${pageCount}`, 170, 285);
+        doc.text('AgroCrédito - Sistema de Gestão de Crédito Agrícola', 20, 285);
+      }
+      
+      doc.save(`relatorio-agrocredito-${format(new Date(), 'yyyy-MM-dd-HHmm')}.pdf`);
+      
+      toast({
+        title: "Relatório exportado com sucesso!",
+        description: "O relatório PDF foi gerado com gráficos e tabelas detalhadas."
+      });
+      
+    } catch (error) {
+      console.error('Erro ao gerar PDF:', error);
+      toast({
+        title: "Erro ao exportar relatório",
+        description: "Ocorreu um erro ao gerar o PDF. Tente novamente.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Função para exportar relatório em Excel
+  const exportToExcel = () => {
+    const { totalStats } = getReportData;
+    
+    // Dados das aplicações
+    const applicationsData = allApplications.map(app => ({
+      'Nome do Projeto': app.projectName,
+      'Solicitante': app.user?.fullName || 'N/A',
+      'Email': app.user?.email || 'N/A',
+      'Valor Solicitado': app.amount,
+      'Tipo de Projeto': getProjectTypeLabel(app.projectType || 'other'),
+      'Status': getStatusLabel(app.status || 'pending').label,
+      'Data de Criação': format(new Date(app.createdAt), 'dd/MM/yyyy', { locale: ptBR }),
+      'Descrição': app.description || 'N/A'
+    }));
+    
+    // Dados de resumo
+    const summaryData = [
+      { 'Métrica': 'Total de Solicitações', 'Valor': totalStats.totalApplications },
+      { 'Métrica': 'Valor Total Solicitado', 'Valor': totalStats.totalAmount },
+      { 'Métrica': 'Solicitações Aprovadas', 'Valor': totalStats.approvedApplications },
+      { 'Métrica': 'Valor Aprovado', 'Valor': totalStats.approvedAmount },
+      { 'Métrica': 'Solicitações Rejeitadas', 'Valor': totalStats.rejectedApplications },
+      { 'Métrica': 'Solicitações Pendentes', 'Valor': totalStats.pendingApplications }
+    ];
+    
+    // Criar workbook
+    const wb = XLSX.utils.book_new();
+    
+    // Adicionar planilhas
+    const wsApplications = XLSX.utils.json_to_sheet(applicationsData);
+    const wsSummary = XLSX.utils.json_to_sheet(summaryData);
+    
+    XLSX.utils.book_append_sheet(wb, wsApplications, 'Solicitações');
+    XLSX.utils.book_append_sheet(wb, wsSummary, 'Resumo');
+    
+    // Salvar arquivo
+    XLSX.writeFile(wb, `relatorio-agrocredito-${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
+    
+    toast({
+      title: "Relatório exportado",
+      description: "O relatório foi exportado em Excel com sucesso."
+    });
+  };
+
+  const renderReports = () => {
+    const { statusData, projectTypeData, monthlyData, amountRangeData, totalStats } = getReportData;
+
+    return (
+      <div className="space-y-6">
+        {/* Filtros de Relatório */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Filter className="w-5 h-5" />
+              Filtros de Relatório
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div>
+                <Label htmlFor="dateRange">Período</Label>
+                <Select 
+                  value={reportFilters.dateRange} 
+                  onValueChange={(value) => setReportFilters(prev => ({ ...prev, dateRange: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecionar período" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="7">Últimos 7 dias</SelectItem>
+                    <SelectItem value="30">Últimos 30 dias</SelectItem>
+                    <SelectItem value="90">Últimos 90 dias</SelectItem>
+                    <SelectItem value="365">Último ano</SelectItem>
+                    <SelectItem value="all">Todos os períodos</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div>
+                <Label htmlFor="startDate">Data Inicial</Label>
+                <Input
+                  type="date"
+                  value={reportFilters.startDate}
+                  onChange={(e) => setReportFilters(prev => ({ ...prev, startDate: e.target.value }))}
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="endDate">Data Final</Label>
+                <Input
+                  type="date"
+                  value={reportFilters.endDate}
+                  onChange={(e) => setReportFilters(prev => ({ ...prev, endDate: e.target.value }))}
+                />
+              </div>
+              
+              <div className="flex items-end gap-2">
+                <Button onClick={exportToPDF} variant="outline" className="flex-1">
+                  <Download className="w-4 h-4 mr-2" />
+                  PDF
+                </Button>
+                <Button onClick={exportToExcel} variant="outline" className="flex-1">
+                  <Download className="w-4 h-4 mr-2" />
+                  Excel
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Estatísticas Principais */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Total de Solicitações</p>
+                  <p className="text-3xl font-bold text-agri-dark">{totalStats.totalApplications}</p>
+                </div>
+                <FileText className="w-8 h-8 text-agri-primary" />
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Valor Total</p>
+                  <p className="text-2xl font-bold text-agri-dark">{formatKwanza(totalStats.totalAmount)}</p>
+                </div>
+                <DollarSign className="w-8 h-8 text-green-600" />
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Taxa de Aprovação</p>
+                  <p className="text-3xl font-bold text-green-600">
+                    {totalStats.totalApplications > 0 
+                      ? ((totalStats.approvedApplications / totalStats.totalApplications) * 100).toFixed(1)
+                      : 0}%
+                  </p>
+                </div>
+                <TrendingUp className="w-8 h-8 text-green-600" />
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Valor Aprovado</p>
+                  <p className="text-2xl font-bold text-green-600">{formatKwanza(totalStats.approvedAmount)}</p>
+                </div>
+                <CheckCircle className="w-8 h-8 text-green-600" />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Gráficos */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Gráfico de Status */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Distribuição por Status</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div data-chart="status-pie">
+                <ResponsiveContainer width="100%" height={300}>
+                  <PieChart>
+                    <Pie
+                      data={statusData}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                      outerRadius={80}
+                      fill="#8884d8"
+                      dataKey="value"
+                    >
+                      {statusData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color || CHART_COLORS[index % CHART_COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Gráfico de Tipos de Projeto */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Distribuição por Tipo de Projeto</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div data-chart="project-type-bar">
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={projectTypeData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} />
+                    <YAxis />
+                    <Tooltip />
+                    <Bar dataKey="value" fill="#10B981" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Gráfico Temporal */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Evolução Mensal das Solicitações</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={400}>
+              <LineChart data={monthlyData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="month" />
+                <YAxis />
+                <Tooltip />
+                <Legend />
+                <Line type="monotone" dataKey="total" stroke="#3B82F6" name="Total" strokeWidth={2} />
+                <Line type="monotone" dataKey="approved" stroke="#10B981" name="Aprovadas" strokeWidth={2} />
+                <Line type="monotone" dataKey="rejected" stroke="#EF4444" name="Rejeitadas" strokeWidth={2} />
+                <Line type="monotone" dataKey="pending" stroke="#F59E0B" name="Pendentes" strokeWidth={2} />
+              </LineChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        {/* Gráfico de Faixas de Valor */}
+        {amountRangeData.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Distribuição por Faixa de Valor</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={amountRangeData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" />
+                  <YAxis />
+                  <Tooltip />
+                  <Bar dataKey="value" fill="#8B5CF6" />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+    );
+  };
+
   const renderContent = () => {
     switch (activeSection) {
       case 'dashboard':
@@ -1419,7 +2031,7 @@ export default function AdminDashboard() {
       case 'applications':
         return renderApplicationsManagement();
       case 'reports':
-        return renderDashboard(); // For now, show dashboard for reports
+        return renderReports();
       case 'profiles':
         return renderProfilesManagement();
       default:
