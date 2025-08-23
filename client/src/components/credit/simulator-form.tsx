@@ -60,7 +60,7 @@ export default function SimulatorForm() {
     defaultValues: {
       amount: "AOA 5,000,000",
       term: "36",
-      projectType: "corn",
+      projectType: "other", // Alterado para "other" para mostrar todos os programas por padrão
       monthlyIncome: "",
     },
   });

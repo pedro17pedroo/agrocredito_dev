@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
+import { Label } from "../ui/label";
 import { Building, CreditCard } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { formatKwanza } from "@/lib/angola-utils";
+import { Badge } from "../ui/badge";
+import { formatKwanza } from "../../lib/angola-utils";
 
 interface FinancialInstitution {
   id: string;
@@ -62,22 +62,15 @@ export default function FinancialInstitutionSelector({
     enabled: !!selectedInstitution,
   });
 
-  // Filter programs based on selection and project type
+  // Mostrar todos os programas ativos sem filtro por tipo de projeto
   useEffect(() => {
-    let programs: CreditProgram[] = selectedInstitution ? 
+    const programs: CreditProgram[] = selectedInstitution ? 
       (institutionPrograms as CreditProgram[]) : 
       (allPrograms as CreditProgram[]);
     
-    // Se não há projectType selecionado ou é "other", mostrar todos os programas ativos
-    // Caso contrário, filtrar apenas os programas que suportam o tipo de projeto específico
-    if (projectType && projectType !== "other" && programs && programs.length > 0) {
-      programs = programs.filter((program: CreditProgram) => 
-        program.projectTypes.includes(projectType) || program.projectTypes.includes("other")
-      );
-    }
-    
+    // Sempre mostrar todos os programas ativos, sem filtro por tipo de projeto
     setFilteredPrograms(programs || []);
-  }, [selectedInstitution, institutionPrograms, allPrograms, projectType]);
+  }, [selectedInstitution, institutionPrograms, allPrograms]);
 
   const handleProgramChange = (programId: string) => {
     if (programId === "none") {
@@ -118,7 +111,7 @@ export default function FinancialInstitutionSelector({
               </Label>
               <Select 
                 value={selectedInstitution || "all"} 
-                onValueChange={(value) => onInstitutionChange(value === "all" ? "" : value)}
+                onValueChange={(value: string) => onInstitutionChange(value === "all" ? "" : value)}
               >
                 <SelectTrigger id="institution-select">
                   <SelectValue placeholder="Ver todos os programas ou selecionar instituição" />
@@ -171,11 +164,6 @@ export default function FinancialInstitutionSelector({
             <div className="text-center py-8 text-gray-500">
               <CreditCard className="w-12 h-12 mx-auto mb-3 opacity-50" />
               <p>Nenhum programa de crédito disponível</p>
-              {projectType && (
-                <p className="text-sm mt-1">
-                  para o tipo de projeto: {getProjectTypeLabel(projectType)}
-                </p>
-              )}
             </div>
           )}
 
@@ -183,7 +171,7 @@ export default function FinancialInstitutionSelector({
             <div className="space-y-4">
               <div>
                 <Label htmlFor="program-select">Selecionar Programa de Crédito</Label>
-                <Select value={selectedProgram || "none"} onValueChange={(value) => handleProgramChange(value === "none" ? "" : value)}>
+                <Select value={selectedProgram || "none"} onValueChange={(value: string) => handleProgramChange(value === "none" ? "" : value)}>
                   <SelectTrigger id="program-select">
                     <SelectValue placeholder="Escolher programa de crédito" />
                   </SelectTrigger>
