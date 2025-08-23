@@ -1,5 +1,5 @@
 import { Sprout, Menu } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button } from "../ui/button";
 import { useState } from "react";
 import { Link } from "wouter";
 

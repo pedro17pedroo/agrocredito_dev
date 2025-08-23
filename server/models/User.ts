@@ -121,6 +121,13 @@ export class UserModel {
       .orderBy(desc(users.createdAt));
   }
 
+  static async updatePassword(id: string, hashedPassword: string): Promise<void> {
+    await db
+      .update(users)
+      .set({ password: hashedPassword })
+      .where(eq(users.id, id));
+  }
+
   static async delete(id: string): Promise<boolean> {
     // First check if user exists
     const existingUser = await this.findById(id);

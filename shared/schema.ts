@@ -246,6 +246,19 @@ export const insertCreditApplicationDocumentSchema = createInsertSchema(creditAp
   createdAt: true,
 });
 
+// Password reset tokens table
+export const passwordResetTokens = mysqlTable("password_reset_tokens", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`(UUID())`),
+  userId: varchar("user_id", { length: 36 }).notNull().references(() => users.id, { onDelete: 'cascade' }),
+  token: varchar("token", { length: 6 }).notNull(), // 6-digit OTP
+  email: varchar("email", { length: 255 }), // Email where OTP was sent
+  phone: varchar("phone", { length: 20 }), // Phone where OTP was sent (for future SMS implementation)
+  deliveryMethod: mysqlEnum("delivery_method", ["email", "sms"]).notNull(),
+  isUsed: boolean("is_used").default(false),
+  expiresAt: timestamp("expires_at").notNull(), // Token expiration time
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -279,3 +292,11 @@ export type InsertDocument = z.infer<typeof insertDocumentSchema>;
 
 export type CreditApplicationDocument = typeof creditApplicationDocuments.$inferSelect;
 export type InsertCreditApplicationDocument = z.infer<typeof insertCreditApplicationDocumentSchema>;
+
+export const insertPasswordResetTokenSchema = createInsertSchema(passwordResetTokens).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
+export type InsertPasswordResetToken = z.infer<typeof insertPasswordResetTokenSchema>;

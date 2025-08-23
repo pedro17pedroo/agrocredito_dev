@@ -3,10 +3,10 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Sprout, Eye, EyeOff } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { useLogin } from "@/hooks/use-auth";
+import { Button } from "../ui/button";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "../ui/form";
+import { Input } from "../ui/input";
+import { useLogin } from "../../hooks/use-auth";
 
 const loginSchema = z.object({
   loginIdentifier: z.string().min(1, "Email ou telefone é obrigatório"),
@@ -18,9 +18,10 @@ type LoginForm = z.infer<typeof loginSchema>;
 interface LoginFormProps {
   onSuccess: () => void;
   onSwitchToRegister: () => void;
+  onSwitchToForgotPassword: () => void;
 }
 
-export default function LoginForm({ onSuccess, onSwitchToRegister }: LoginFormProps) {
+export default function LoginForm({ onSuccess, onSwitchToRegister, onSwitchToForgotPassword }: LoginFormProps) {
   const [showPassword, setShowPassword] = useState(false);
   const login = useLogin();
 
@@ -51,7 +52,7 @@ export default function LoginForm({ onSuccess, onSwitchToRegister }: LoginFormPr
           <FormField
             control={form.control}
             name="loginIdentifier"
-            render={({ field }) => (
+            render={({ field }: { field: any }) => (
               <FormItem>
                 <FormLabel className="form-label">Email ou Telemóvel</FormLabel>
                 <FormControl>
@@ -72,7 +73,7 @@ export default function LoginForm({ onSuccess, onSwitchToRegister }: LoginFormPr
           <FormField
             control={form.control}
             name="password"
-            render={({ field }) => (
+            render={({ field }: { field: any }) => (
               <FormItem>
                 <FormLabel className="form-label">Palavra-passe</FormLabel>
                 <FormControl>
@@ -106,7 +107,11 @@ export default function LoginForm({ onSuccess, onSwitchToRegister }: LoginFormPr
           </Button>
           
           <div className="text-center">
-            <button type="button" className="text-agri-primary hover:underline font-medium">
+            <button 
+              type="button" 
+              onClick={onSwitchToForgotPassword}
+              className="text-agri-primary hover:underline font-medium"
+            >
               Esqueceu a palavra-passe?
             </button>
           </div>

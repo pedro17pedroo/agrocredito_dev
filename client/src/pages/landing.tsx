@@ -1,17 +1,19 @@
-import { useState } from "react";
-import { Link } from "wouter";
-import { Sprout, Calculator, Shield, Clock, Smartphone, UserPlus, FileText, CheckCircle, CreditCard, ArrowRight } from "lucide-react";
-import Navbar from "@/components/layout/navbar";
-import Footer from "@/components/layout/footer";
-import LoginForm from "@/components/auth/login-form";
-import RegisterForm from "@/components/auth/register-form";
-import SimulatorForm from "@/components/credit/simulator-form";
-import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import React, { useState } from 'react'
+import { Link } from 'wouter'
+import { Sprout, Calculator, Shield, Clock, Smartphone, UserPlus, FileText, CheckCircle, CreditCard, ArrowRight } from 'lucide-react'
+import Navbar from '../components/layout/navbar'
+import Footer from '../components/layout/footer'
+import LoginForm from '../components/auth/login-form'
+import RegisterForm from '../components/auth/register-form'
+import ForgotPasswordForm from '../components/auth/forgot-password-form'
+import SimulatorForm from '../components/credit/simulator-form'
+import { Button } from '../components/ui/button'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog'
 
 export default function Landing() {
   const [showLogin, setShowLogin] = useState(false);
   const [showRegister, setShowRegister] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [showSimulator, setShowSimulator] = useState(false);
 
   const scrollToSimulator = () => {
@@ -457,6 +459,10 @@ export default function Landing() {
               setShowLogin(false);
               setShowRegister(true);
             }}
+            onSwitchToForgotPassword={() => {
+              setShowLogin(false);
+              setShowForgotPassword(true);
+            }}
           />
         </DialogContent>
       </Dialog>
@@ -470,6 +476,24 @@ export default function Landing() {
             onSuccess={() => setShowRegister(false)}
             onSwitchToLogin={() => {
               setShowRegister(false);
+              setShowLogin(true);
+            }}
+          />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showForgotPassword} onOpenChange={setShowForgotPassword}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Recuperar Palavra-passe</DialogTitle>
+          </DialogHeader>
+          <ForgotPasswordForm 
+            onSuccess={() => {
+              setShowForgotPassword(false);
+              setShowLogin(true);
+            }}
+            onBackToLogin={() => {
+              setShowForgotPassword(false);
               setShowLogin(true);
             }}
           />

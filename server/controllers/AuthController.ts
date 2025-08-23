@@ -4,6 +4,8 @@ import jwt from "jsonwebtoken";
 import { z } from "zod";
 import { UserModel } from "../models/User";
 import { ProfileModel } from "../models/Profile";
+import { PasswordResetTokenModel } from "../models/PasswordResetToken";
+import { EmailService } from "../utils/emailService";
 import { insertUserSchema } from "@shared/schema";
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
@@ -148,6 +150,184 @@ export class AuthController {
       });
     } catch (error) {
       console.error("Get user permissions error:", error);
+      res.status(500).json({ message: "Erro interno do servidor" });
+    }
+  }
+
+  /**
+   * Solicita um OTP para recuperação de senha
+   */
+  static async requestPasswordReset(req: Request, res: Response) {
+    try {
+      const { contact, deliveryMethod } = req.body;
+
+      // Validação dos dados de entrada
+      if (!contact || !deliveryMethod) {
+        return res.status(400).json({ 
+          message: "Contacto e método de entrega são obrigatórios" 
+        });
+      }
+
+      if (deliveryMethod !== 'email') {
+        return res.status(400).json({ 
+          message: "Apenas o método de entrega por email está disponível" 
+        });
+      }
+
+      // Buscar usuário pelo email
+      const user = await UserModel.findByEmail(contact);
+      if (!user) {
+        // Por segurança, não revelamos se o email existe ou não
+        return res.json({ 
+          message: "Se o email existir, um código de verificação será enviado" 
+        });
+      }
+
+      // Invalidar tokens anteriores do usuário
+      await PasswordResetTokenModel.invalidateUserTokens(user.id);
+
+      // Criar novo token OTP
+      const otp = PasswordResetTokenModel.generateOTP();
+      const expiresAt = PasswordResetTokenModel.getExpirationTime();
+      
+      const tokenData = await PasswordResetTokenModel.create({
+        userId: user.id,
+        email: contact,
+        deliveryMethod: 'email',
+        token: otp,
+        expiresAt: expiresAt
+      });
+
+      // Enviar OTP por email
+      await EmailService.sendPasswordResetOTP({
+        to: contact,
+        otp: otp,
+        userName: user.fullName
+      });
+
+      res.json({ 
+        message: "Código de verificação enviado com sucesso",
+        tokenId: tokenData.id
+      });
+    } catch (error) {
+      console.error("Request password reset error:", error);
+      res.status(500).json({ message: "Erro interno do servidor" });
+    }
+  }
+
+  /**
+   * Valida o OTP fornecido pelo usuário
+   */
+  static async validateOTP(req: Request, res: Response) {
+    try {
+      const { tokenId, otp } = req.body;
+
+      if (!tokenId || !otp) {
+        return res.status(400).json({ 
+          message: "ID do token e código OTP são obrigatórios" 
+        });
+      }
+
+      // Buscar token
+      const token = await PasswordResetTokenModel.findById(tokenId);
+      if (!token) {
+        return res.status(400).json({ 
+          message: "Token inválido ou expirado" 
+        });
+      }
+
+      // Verificar se o token não foi usado e não expirou
+      if (token.isUsed) {
+        return res.status(400).json({ 
+          message: "Este código já foi utilizado" 
+        });
+      }
+
+      if (new Date() > token.expiresAt) {
+        return res.status(400).json({ 
+          message: "Código expirado. Solicite um novo código" 
+        });
+      }
+
+      // Verificar se o OTP está correto
+      if (token.token !== otp) {
+        return res.status(400).json({ 
+          message: "Código de verificação inválido" 
+        });
+      }
+
+      res.json({ 
+        message: "Código validado com sucesso",
+        valid: true
+      });
+    } catch (error) {
+      console.error("Validate OTP error:", error);
+      res.status(500).json({ message: "Erro interno do servidor" });
+    }
+  }
+
+  /**
+   * Redefine a senha do usuário após validação do OTP
+   */
+  static async resetPassword(req: Request, res: Response) {
+    try {
+      const { tokenId, otp, newPassword } = req.body;
+
+      if (!tokenId || !otp || !newPassword) {
+        return res.status(400).json({ 
+          message: "Todos os campos são obrigatórios" 
+        });
+      }
+
+      // Validar força da senha
+      if (newPassword.length < 6) {
+        return res.status(400).json({ 
+          message: "A senha deve ter pelo menos 6 caracteres" 
+        });
+      }
+
+      // Buscar token
+      const token = await PasswordResetTokenModel.findById(tokenId);
+      if (!token) {
+        return res.status(400).json({ 
+          message: "Token inválido ou expirado" 
+        });
+      }
+
+      // Verificar se o token não foi usado e não expirou
+      if (token.isUsed) {
+        return res.status(400).json({ 
+          message: "Este código já foi utilizado" 
+        });
+      }
+
+      if (new Date() > token.expiresAt) {
+        return res.status(400).json({ 
+          message: "Código expirado. Solicite um novo código" 
+        });
+      }
+
+      // Verificar se o OTP está correto
+      if (token.token !== otp) {
+        return res.status(400).json({ 
+          message: "Código de verificação inválido" 
+        });
+      }
+
+      // Hash da nova senha
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+      // Atualizar senha do usuário
+      await UserModel.updatePassword(token.userId, hashedPassword);
+
+      // Marcar token como usado
+      await PasswordResetTokenModel.markAsUsed(tokenId);
+
+      res.json({ 
+        message: "Senha redefinida com sucesso" 
+      });
+    } catch (error) {
+      console.error("Reset password error:", error);
       res.status(500).json({ message: "Erro interno do servidor" });
     }
   }
