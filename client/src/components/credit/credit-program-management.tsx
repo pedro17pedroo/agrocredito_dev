@@ -52,7 +52,7 @@ const projectTypeOptions = [
   { value: "cattle", label: "Pecuária" },
   { value: "poultry", label: "Avicultura" },
   { value: "horticulture", label: "Horticultura" },
-  { value: "other", label: "Outro" }
+    { value: "other", label: "Outro" }
 ];
 
 const programSchema = z.object({
