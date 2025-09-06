@@ -26,6 +26,11 @@ const formatKwanza = (value: number): string => {
 // Função para obter label do tipo de projeto
 const getProjectTypeLabel = (type: string): string => {
   const labels: Record<string, string> = {
+    'corn': 'Cultivo de Milho',
+    'cassava': 'Cultivo de Mandioca',
+    'cattle': 'Criação de Gado',
+    'poultry': 'Avicultura',
+    'horticulture': 'Horticultura',
     'crop': 'Cultivo',
     'livestock': 'Pecuária',
     'equipment': 'Equipamentos',
@@ -101,15 +106,34 @@ const CardContent = ({ children, className = '', ...props }: any) => (
 
 const Select = ({ children, value, onValueChange, ...props }: any) => {
   const [isOpen, setIsOpen] = useState(false);
-  
+
+  const handleValueChange = (newValue: string) => {
+    onValueChange?.(newValue);
+    setIsOpen(false);
+  };
+
+  const getSelectedLabel = () => {
+    let selectedLabel = value || 'Selecionar...';
+    React.Children.forEach(children, (child) => {
+      if (child?.type?.name === 'SelectContent') {
+        React.Children.forEach(child.props.children, (item) => {
+          if (item?.props?.value === value) {
+            selectedLabel = item.props.children;
+          }
+        });
+      }
+    });
+    return selectedLabel;
+  };
+
   return (
     <div className="relative" {...props}>
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="w-full px-3 py-2 text-left bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
       >
-        <span>{value || 'Selecionar...'}</span>
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <span>{getSelectedLabel()}</span>
+        <svg className={`w-4 h-4 transform transition-transform ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
         </svg>
       </button>
@@ -117,7 +141,7 @@ const Select = ({ children, value, onValueChange, ...props }: any) => {
         <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
           {React.Children.map(children, (child) => {
             if (child?.type?.name === 'SelectContent') {
-              return React.cloneElement(child, { onValueChange, setIsOpen });
+              return React.cloneElement(child, { onValueChange: handleValueChange, setIsOpen });
             }
             return child;
           })}
@@ -145,7 +169,7 @@ const SelectItem = ({ children, value, onValueChange, setIsOpen, ...props }: any
       onValueChange?.(value);
       setIsOpen?.(false);
     }}
-    className="px-3 py-2 cursor-pointer hover:bg-gray-100"
+    className="px-3 py-2 cursor-pointer hover:bg-gray-100 transition-colors"
     {...props}
   >
     {children}
@@ -181,10 +205,52 @@ export default function Reports() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
   const [reportType, setReportType] = useState("overview");
+  const [activePeriod, setActivePeriod] = useState("all"); // Para controlar qual botão está ativo
   const [dateRange, setDateRange] = useState({
-    from: new Date('2020-01-01'), // Data muito anterior para incluir todos os dados
-    to: endOfMonth(new Date()),
+    from: new Date(2020, 0, 1), // Mostrar todas as aplicações por padrão
+    to: new Date(),
   });
+  
+  // Log quando dateRange muda
+  React.useEffect(() => {
+    console.log('📅 [DATERANGE] DateRange alterado:', {
+      from: dateRange.from,
+      to: dateRange.to,
+      fromFormatted: format(dateRange.from, 'dd/MM/yyyy', { locale: ptBR }),
+      toFormatted: format(dateRange.to, 'dd/MM/yyyy', { locale: ptBR })
+    });
+  }, [dateRange]);
+
+  // Funções para alterar o período
+  const setPeriod = (months: number) => {
+    const newDateRange = {
+      from: startOfMonth(subMonths(new Date(), months)),
+      to: endOfMonth(new Date()),
+    };
+    console.log(`🔄 [FILTRO] Definindo período para ${months} meses:`, newDateRange);
+    setActivePeriod(`${months}months`);
+    setDateRange(newDateRange);
+  };
+
+  const setLastYear = () => {
+    const newDateRange = {
+      from: startOfMonth(subMonths(new Date(), 12)),
+      to: endOfMonth(new Date()),
+    };
+    console.log('🔄 [FILTRO] Definindo período para último ano:', newDateRange);
+    setActivePeriod('year');
+    setDateRange(newDateRange);
+  };
+
+  const setAllData = () => {
+    const newDateRange = {
+      from: new Date(2020, 0, 1),
+      to: new Date()
+    };
+    console.log('🔄 [FILTRO] Definindo período para todos os dados:', newDateRange);
+    setActivePeriod('all');
+    setDateRange(newDateRange);
+  };
 
   const { data: applications = [], isLoading: applicationsLoading } = useQuery<CreditApplication[]>({
     queryKey: user?.userType === "admin" ? ["/api/admin/credit-applications"] : ["/api/credit-applications/user"],
@@ -199,12 +265,21 @@ export default function Reports() {
       const response = await apiRequest("GET", endpoint);
       const data = await response.json();
       
+      console.log('📊 [REPORTS] Dados recebidos:', {
+        isAdmin: user?.userType === "admin",
+        dataType: typeof data,
+        dataKeys: Object.keys(data || {}),
+        dataLength: Array.isArray(data) ? data.length : 'não é array'
+      });
+      
       // Para administradores, o endpoint retorna um objeto com arrays separados
       if (user?.userType === "admin" && data.new && data.underReview && data.historical) {
         const combined = [...data.new, ...data.underReview, ...data.historical];
+        console.log('📊 [REPORTS] Dados combinados (admin):', combined.length);
         return combined;
       }
       
+      console.log('📊 [REPORTS] Dados retornados:', Array.isArray(data) ? data.length : 'não é array');
       return data;
     },
     enabled: !!user,
@@ -237,8 +312,30 @@ export default function Reports() {
     
     // Usar new Date() em vez de parseISO() pois as datas vêm como Date objects da BD
     const appDate = new Date(app.createdAt);
-    return appDate >= dateRange.from && appDate <= dateRange.to;
+    const isInRange = appDate >= dateRange.from && appDate <= dateRange.to;
+    
+    // Log de debug para verificar a filtragem
+    if (applications.length > 0 && Math.random() < 0.1) { // Log apenas 10% das vezes para não sobrecarregar
+      console.log('🔍 [FILTRO] Verificando aplicação:', {
+        id: app.id,
+        createdAt: app.createdAt,
+        appDate: appDate,
+        dateRange: dateRange,
+        isInRange: isInRange
+      });
+    }
+    
+    return isInRange;
   });
+  
+  // Log do resultado da filtragem
+  console.log('📊 [FILTRO] Resultado da filtragem:', {
+    totalApplications: applications.length,
+    filteredApplications: filteredApplications.length,
+    dateRange: dateRange
+  });
+
+
 
 
 
@@ -250,24 +347,77 @@ export default function Reports() {
     return paymentDate >= dateRange.from && paymentDate <= dateRange.to;
   });
 
-  // Calcular estatísticas
-  const datasetToUse = user?.userType === "admin" ? applications : filteredApplications;
+  // Calcular estatísticas baseadas no tipo de relatório e filtros
+  const getDataForReportType = () => {
+    switch (reportType) {
+      case "applications":
+        return filteredApplications;
+      case "payments":
+        return filteredPayments;
+      case "analytics":
+        return filteredApplications.filter(app => app.status === "approved");
+      default: // overview
+        return filteredApplications;
+    }
+  };
   
-  const approvedApps = datasetToUse.filter(app => app.status === "approved");
-  const rejectedApps = datasetToUse.filter(app => app.status === "rejected");
-  const pendingApps = datasetToUse.filter(app => app.status === "pending");
-  const underReviewApps = datasetToUse.filter(app => app.status === "under_review");
+  const datasetToUse = getDataForReportType();
+  
+  // Usar sempre filteredApplications para cálculos de status, independente do tipo de relatório
+  const approvedApps = filteredApplications.filter(app => app.status === "approved");
+  const rejectedApps = filteredApplications.filter(app => app.status === "rejected");
+  const pendingApps = filteredApplications.filter(app => app.status === "pending");
+  const underReviewApps = filteredApplications.filter(app => app.status === "under_review");
+  
+  // 🔍 [DEBUG] Log dos status das aplicações
+  console.log('📊 [STATUS DEBUG] === ANÁLISE DE STATUS ===');
+  console.log('📊 [STATUS DEBUG] Total de aplicações filtradas:', filteredApplications.length);
+  
+  // Log detalhado de cada aplicação e seu status
+  filteredApplications.forEach((app, index) => {
+    console.log(`📊 [STATUS DEBUG] App ${index + 1}:`, {
+      id: app.id,
+      status: app.status,
+      amount: app.amount,
+      createdAt: app.createdAt
+    });
+  });
+  
+  // Log dos contadores por status
+  console.log('📊 [STATUS DEBUG] Contadores por status:', {
+    approved: approvedApps.length,
+    rejected: rejectedApps.length,
+    pending: pendingApps.length,
+    underReview: underReviewApps.length,
+    total: filteredApplications.length
+  });
+  
+  // Log das aplicações pendentes especificamente (pending + under_review)
+  console.log('📊 [STATUS DEBUG] Aplicações pendentes (apenas pending):', pendingApps.map(app => ({
+    id: app.id,
+    status: app.status,
+    createdAt: app.createdAt
+  })));
+  console.log('📊 [STATUS DEBUG] Aplicações em análise (under_review):', underReviewApps.map(app => ({
+    id: app.id,
+    status: app.status,
+    createdAt: app.createdAt
+  })));
+  console.log('📊 [STATUS DEBUG] Aplicações separadas por status:', {
+    pending: pendingApps.map(app => ({ id: app.id, status: app.status, createdAt: app.createdAt })),
+    underReview: underReviewApps.map(app => ({ id: app.id, status: app.status, createdAt: app.createdAt }))
+  });
   
   const stats = {
-    totalApplications: datasetToUse.length,
+    totalApplications: filteredApplications.length,
     approvedApplications: approvedApps.length,
     rejectedApplications: rejectedApps.length,
     pendingApplications: pendingApps.length,
-    totalCreditValue: datasetToUse.reduce((sum, app) => sum + parseFloat(app.amount), 0),
+    totalCreditValue: filteredApplications.reduce((sum, app) => sum + parseFloat(app.amount), 0),
     approvedCreditValue: approvedApps.reduce((sum, app) => sum + parseFloat(app.amount), 0),
     totalPayments: filteredPayments.reduce((sum, payment) => sum + parseFloat(payment.amount), 0),
-    averageLoanSize: datasetToUse.length > 0 
-      ? datasetToUse.reduce((sum, app) => sum + parseFloat(app.amount), 0) / datasetToUse.length 
+    averageLoanSize: filteredApplications.length > 0 
+      ? filteredApplications.reduce((sum, app) => sum + parseFloat(app.amount), 0) / filteredApplications.length 
       : 0,
   };
   
@@ -275,7 +425,7 @@ export default function Reports() {
 
 
   // Distribuição por tipo de projeto
-  const projectDistribution = (user?.userType === "admin" ? applications : filteredApplications).reduce((acc, app) => {
+  const projectDistribution = filteredApplications.reduce((acc, app) => {
     acc[app.projectType] = (acc[app.projectType] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
@@ -745,7 +895,7 @@ export default function Reports() {
                     <SelectItem value="overview">Visão Geral</SelectItem>
                     <SelectItem value="applications">Solicitações</SelectItem>
                     <SelectItem value="payments">Pagamentos</SelectItem>
-                    <SelectItem value="performance">Performance</SelectItem>
+                    <SelectItem value="analytics">Análise</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -754,34 +904,32 @@ export default function Reports() {
                 <label className="block text-sm font-medium mb-2">Período</label>
                 <div className="flex space-x-2">
                   <Button
-                    variant="outline"
+                    variant={activePeriod === '3months' ? 'default' : 'outline'}
                     size="sm"
-                    onClick={() => setDateRange({
-                      from: startOfMonth(subMonths(new Date(), 3)),
-                      to: endOfMonth(new Date()),
-                    })}
+                    onClick={() => setPeriod(3)}
                   >
                     Últimos 3 meses
                   </Button>
                   <Button
-                    variant="outline"
+                    variant={activePeriod === '6months' ? 'default' : 'outline'}
                     size="sm"
-                    onClick={() => setDateRange({
-                      from: startOfMonth(subMonths(new Date(), 6)),
-                      to: endOfMonth(new Date()),
-                    })}
+                    onClick={() => setPeriod(6)}
                   >
                     Últimos 6 meses
                   </Button>
                   <Button
-                    variant="outline"
+                    variant={activePeriod === 'year' ? 'default' : 'outline'}
                     size="sm"
-                    onClick={() => setDateRange({
-                      from: startOfMonth(subMonths(new Date(), 12)),
-                      to: endOfMonth(new Date()),
-                    })}
+                    onClick={() => setLastYear()}
                   >
                     Último ano
+                  </Button>
+                  <Button
+                    variant={activePeriod === 'all' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setAllData()}
+                  >
+                    Todos os dados
                   </Button>
                 </div>
               </div>
@@ -796,192 +944,426 @@ export default function Reports() {
           </div>
         ) : (
           <>
-            {/* Overview Stats */}
-            <div className="grid md:grid-cols-4 gap-6 mb-8">
-              <Card className="border-l-4 border-blue-500">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-gray-600 text-sm font-medium">Total de Solicitações</p>
-                      <p className="text-2xl font-bold text-agri-dark">{stats.totalApplications}</p>
-                    </div>
-                    <FileText className="text-blue-500 w-8 h-8" />
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="border-l-4 border-green-500">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-gray-600 text-sm font-medium">Taxa de Aprovação</p>
-                      <p className="text-2xl font-bold text-agri-dark">{approvalRate.toFixed(1)}%</p>
-                    </div>
-                    <TrendingUp className="text-green-500 w-8 h-8" />
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="border-l-4 border-agri-primary">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-gray-600 text-sm font-medium">Valor Total Aprovado</p>
-                      <p className="text-2xl font-bold text-agri-dark">
-                        {formatKwanza(stats.approvedCreditValue)}
-                      </p>
-                    </div>
-                    <BarChart3 className="text-agri-primary w-8 h-8" />
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="border-l-4 border-agri-secondary">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-gray-600 text-sm font-medium">Total Recebido</p>
-                      <p className="text-2xl font-bold text-agri-dark">
-                        {formatKwanza(stats.totalPayments)}
-                      </p>
-                    </div>
-                    <PieChart className="text-agri-secondary w-8 h-8" />
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            <div className="grid lg:grid-cols-2 gap-8">
-              {/* Status Distribution */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Distribuição por Estado</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div>
-                      <div className="flex justify-between mb-2">
-                        <span className="text-sm font-medium">Aprovadas</span>
-                        <span className="text-sm text-gray-600">
-                          {stats.approvedApplications} ({stats.totalApplications > 0 ? (stats.approvedApplications / stats.totalApplications * 100).toFixed(1) : 0}%)
-                        </span>
-                      </div>
-                      <Progress 
-                        value={stats.totalApplications > 0 ? (stats.approvedApplications / stats.totalApplications) * 100 : 0} 
-                        className="h-2 bg-green-100"
-                      />
-                    </div>
-                    
-                    <div>
-                      <div className="flex justify-between mb-2">
-                        <span className="text-sm font-medium">Pendentes</span>
-                        <span className="text-sm text-gray-600">
-                          {stats.pendingApplications} ({stats.totalApplications > 0 ? (stats.pendingApplications / stats.totalApplications * 100).toFixed(1) : 0}%)
-                        </span>
-                      </div>
-                      <Progress 
-                        value={stats.totalApplications > 0 ? (stats.pendingApplications / stats.totalApplications) * 100 : 0} 
-                        className="h-2 bg-yellow-100"
-                      />
-                    </div>
-                    
-                    <div>
-                      <div className="flex justify-between mb-2">
-                        <span className="text-sm font-medium">Rejeitadas</span>
-                        <span className="text-sm text-gray-600">
-                          {stats.rejectedApplications} ({stats.totalApplications > 0 ? (stats.rejectedApplications / stats.totalApplications * 100).toFixed(1) : 0}%)
-                        </span>
-                      </div>
-                      <Progress 
-                        value={stats.totalApplications > 0 ? (stats.rejectedApplications / stats.totalApplications) * 100 : 0} 
-                        className="h-2 bg-red-100"
-                      />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Project Type Distribution */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Distribuição por Tipo de Projeto</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {Object.entries(projectDistribution).map(([type, count]) => (
-                      <div key={type}>
-                        <div className="flex justify-between mb-2">
-                          <span className="text-sm font-medium">{getProjectTypeLabel(type)}</span>
-                          <span className="text-sm text-gray-600">
-                            {count} ({stats.totalApplications > 0 ? (count / stats.totalApplications * 100).toFixed(1) : 0}%)
-                          </span>
+            {/* Renderização condicional baseada no tipo de relatório */}
+            {reportType === "overview" && (
+              <>
+                {/* Overview Stats */}
+                <div className="grid md:grid-cols-5 gap-6 mb-8">
+                  <Card className="border-l-4 border-blue-500">
+                    <CardContent className="p-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-gray-600 text-sm font-medium">Total de Solicitações</p>
+                          <p className="text-2xl font-bold text-agri-dark">{stats.totalApplications}</p>
                         </div>
-                        <Progress 
-                          value={stats.totalApplications > 0 ? (count / stats.totalApplications) * 100 : 0} 
-                          className="h-2"
-                        />
+                        <FileText className="text-blue-500 w-8 h-8" />
                       </div>
-                    ))}
+                    </CardContent>
+                  </Card>
+
+                  <Card className="border-l-4 border-green-500">
+                    <CardContent className="p-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-gray-600 text-sm font-medium">Aprovadas</p>
+                          <p className="text-2xl font-bold text-agri-dark">{stats.approvedApplications}</p>
+                        </div>
+                        <TrendingUp className="text-green-500 w-8 h-8" />
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="border-l-4 border-yellow-500">
+                    <CardContent className="p-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-gray-600 text-sm font-medium">Pendentes</p>
+                          <p className="text-2xl font-bold text-agri-dark">{stats.pendingApplications}</p>
+                        </div>
+                        <Calendar className="text-yellow-500 w-8 h-8" />
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="border-l-4 border-orange-500">
+                    <CardContent className="p-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-gray-600 text-sm font-medium">Em Análise</p>
+                          <p className="text-2xl font-bold text-agri-dark">{underReviewApps.length}</p>
+                        </div>
+                        <BarChart3 className="text-orange-500 w-8 h-8" />
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="border-l-4 border-green-600">
+                    <CardContent className="p-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-gray-600 text-sm font-medium">Taxa de Aprovação</p>
+                          <p className="text-2xl font-bold text-agri-dark">{approvalRate.toFixed(1)}%</p>
+                        </div>
+                        <TrendingUp className="text-green-500 w-8 h-8" />
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="border-l-4 border-agri-primary">
+                    <CardContent className="p-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-gray-600 text-sm font-medium">Valor Total Aprovado</p>
+                          <p className="text-2xl font-bold text-agri-dark">
+                            {formatKwanza(stats.approvedCreditValue)}
+                          </p>
+                        </div>
+                        <BarChart3 className="text-agri-primary w-8 h-8" />
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="border-l-4 border-agri-secondary">
+                    <CardContent className="p-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-gray-600 text-sm font-medium">Total Recebido</p>
+                          <p className="text-2xl font-bold text-agri-dark">
+                            {formatKwanza(stats.totalPayments)}
+                          </p>
+                        </div>
+                        <PieChart className="text-agri-secondary w-8 h-8" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                <div className="grid lg:grid-cols-2 gap-8">
+                  {/* Status Distribution */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Distribuição por Estado</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        <div>
+                          <div className="flex justify-between mb-2">
+                            <span className="text-sm font-medium">Aprovadas</span>
+                            <span className="text-sm text-gray-600">
+                              {stats.approvedApplications} ({stats.totalApplications > 0 ? (stats.approvedApplications / stats.totalApplications * 100).toFixed(1) : 0}%)
+                            </span>
+                          </div>
+                          <Progress 
+                            value={stats.totalApplications > 0 ? (stats.approvedApplications / stats.totalApplications) * 100 : 0} 
+                            className="h-2 bg-green-100"
+                          />
+                        </div>
+                        
+                        <div>
+                          <div className="flex justify-between mb-2">
+                            <span className="text-sm font-medium">Pendentes</span>
+                            <span className="text-sm text-gray-600">
+                              {stats.pendingApplications} ({stats.totalApplications > 0 ? (stats.pendingApplications / stats.totalApplications * 100).toFixed(1) : 0}%)
+                            </span>
+                          </div>
+                          <Progress 
+                            value={stats.totalApplications > 0 ? (stats.pendingApplications / stats.totalApplications) * 100 : 0} 
+                            className="h-2 bg-yellow-100"
+                          />
+                        </div>
+                        
+                        <div>
+                          <div className="flex justify-between mb-2">
+                            <span className="text-sm font-medium">Em Análise</span>
+                            <span className="text-sm text-gray-600">
+                              {underReviewApps.length} ({stats.totalApplications > 0 ? (underReviewApps.length / stats.totalApplications * 100).toFixed(1) : 0}%)
+                            </span>
+                          </div>
+                          <Progress 
+                            value={stats.totalApplications > 0 ? (underReviewApps.length / stats.totalApplications) * 100 : 0} 
+                            className="h-2 bg-orange-100"
+                          />
+                        </div>
+                        
+                        <div>
+                          <div className="flex justify-between mb-2">
+                            <span className="text-sm font-medium">Rejeitadas</span>
+                            <span className="text-sm text-gray-600">
+                              {stats.rejectedApplications} ({stats.totalApplications > 0 ? (stats.rejectedApplications / stats.totalApplications * 100).toFixed(1) : 0}%)
+                            </span>
+                          </div>
+                          <Progress 
+                            value={stats.totalApplications > 0 ? (stats.rejectedApplications / stats.totalApplications) * 100 : 0} 
+                            className="h-2 bg-red-100"
+                          />
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Project Type Distribution */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Distribuição por Tipo de Projeto</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        {Object.entries(projectDistribution).map(([type, count]) => (
+                          <div key={type}>
+                            <div className="flex justify-between mb-2">
+                              <span className="text-sm font-medium">{getProjectTypeLabel(type)}</span>
+                              <span className="text-sm text-gray-600">
+                                {count} ({stats.totalApplications > 0 ? (count / stats.totalApplications * 100).toFixed(1) : 0}%)
+                              </span>
+                            </div>
+                            <Progress 
+                              value={stats.totalApplications > 0 ? (count / stats.totalApplications) * 100 : 0} 
+                              className="h-2"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              </>
+            )}
+
+            {/* Seção de Aplicações */}
+            {reportType === "applications" && (
+              <Card className="mt-8">
+                <CardHeader>
+                  <CardTitle>Relatório de Aplicações de Crédito</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid md:grid-cols-3 gap-6 mb-6">
+                    <div className="text-center p-4 bg-blue-50 rounded-lg">
+                      <p className="text-2xl font-bold text-blue-600">{stats.totalApplications}</p>
+                      <p className="text-sm text-gray-600">Total de Aplicações</p>
+                    </div>
+                    <div className="text-center p-4 bg-green-50 rounded-lg">
+                      <p className="text-2xl font-bold text-green-600">{stats.approvedApplications}</p>
+                      <p className="text-sm text-gray-600">Aprovadas</p>
+                    </div>
+                    <div className="text-center p-4 bg-yellow-50 rounded-lg">
+                      <p className="text-2xl font-bold text-yellow-600">{stats.pendingApplications}</p>
+                      <p className="text-sm text-gray-600">Pendentes</p>
+                    </div>
                   </div>
+                  {filteredApplications.length === 0 ? (
+                    <div className="text-center py-8">
+                      <p className="text-gray-600">Nenhuma aplicação encontrada no período selecionado.</p>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="text-left py-3 px-4 font-semibold text-gray-700">Data</th>
+                            <th className="text-left py-3 px-4 font-semibold text-gray-700">Projeto</th>
+                            <th className="text-left py-3 px-4 font-semibold text-gray-700">Tipo</th>
+                            <th className="text-left py-3 px-4 font-semibold text-gray-700">Montante</th>
+                            <th className="text-left py-3 px-4 font-semibold text-gray-700">Estado</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200">
+                          {filteredApplications.map((application) => (
+                            <tr key={application.id} className="hover:bg-gray-50">
+                              <td className="py-3 px-4 text-sm text-gray-600">
+                                {application.createdAt ? format(new Date(application.createdAt), "dd/MM/yyyy", { locale: ptBR }) : "-"}
+                              </td>
+                              <td className="py-3 px-4 font-medium text-agri-dark">
+                                {application.projectName}
+                              </td>
+                              <td className="py-3 px-4 text-sm text-gray-600">
+                                {getProjectTypeLabel(application.projectType)}
+                              </td>
+                              <td className="py-3 px-4 font-semibold text-agri-dark">
+                                {formatKwanza(parseFloat(application.amount))}
+                              </td>
+                              <td className="py-3 px-4">
+                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                  application.status === "approved" ? "bg-green-100 text-green-800" :
+                                  application.status === "rejected" ? "bg-red-100 text-red-800" :
+                                  application.status === "under_review" ? "bg-orange-100 text-orange-800" :
+                                  "bg-yellow-100 text-yellow-800"
+                                }`}>
+                                  {application.status === "approved" ? "Aprovado" :
+                                   application.status === "rejected" ? "Rejeitado" :
+                                   application.status === "under_review" ? "Em Análise" : "Pendente"}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
-            </div>
+            )}
 
-            {/* Recent Applications Table */}
-            <Card className="mt-8">
-              <CardHeader>
-                <CardTitle>Solicitações Recentes</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {filteredApplications.length === 0 ? (
-                  <div className="text-center py-8">
-                    <p className="text-gray-600">Nenhuma solicitação encontrada no período selecionado.</p>
+            {/* Seção de Pagamentos */}
+            {reportType === "payments" && (
+              <Card className="mt-8">
+                <CardHeader>
+                  <CardTitle>Relatório de Pagamentos</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid md:grid-cols-2 gap-6 mb-6">
+                    <div className="text-center p-4 bg-green-50 rounded-lg">
+                      <p className="text-2xl font-bold text-green-600">{formatKwanza(stats.totalPayments)}</p>
+                      <p className="text-sm text-gray-600">Total Recebido</p>
+                    </div>
+                    <div className="text-center p-4 bg-blue-50 rounded-lg">
+                      <p className="text-2xl font-bold text-blue-600">{formatKwanza(stats.approvedCreditValue)}</p>
+                      <p className="text-sm text-gray-600">Total Aprovado</p>
+                    </div>
                   </div>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="text-left py-3 px-4 font-semibold text-gray-700">Data</th>
-                          <th className="text-left py-3 px-4 font-semibold text-gray-700">Projeto</th>
-                          <th className="text-left py-3 px-4 font-semibold text-gray-700">Tipo</th>
-                          <th className="text-left py-3 px-4 font-semibold text-gray-700">Montante</th>
-                          <th className="text-left py-3 px-4 font-semibold text-gray-700">Estado</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-200">
-                        {filteredApplications.slice(0, 10).map((application) => (
-                          <tr key={application.id} className="hover:bg-gray-50">
-                            <td className="py-3 px-4 text-sm text-gray-600">
-                              {application.createdAt ? format(new Date(application.createdAt), "dd/MM/yyyy", { locale: ptBR }) : "-"}
-                            </td>
-                            <td className="py-3 px-4 font-medium text-agri-dark">
-                              {application.projectName}
-                            </td>
-                            <td className="py-3 px-4 text-sm text-gray-600">
-                              {getProjectTypeLabel(application.projectType)}
-                            </td>
-                            <td className="py-3 px-4 font-semibold text-agri-dark">
-                              {formatKwanza(parseFloat(application.amount))}
-                            </td>
-                            <td className="py-3 px-4">
-                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                application.status === "approved" ? "bg-green-100 text-green-800" :
-                                application.status === "rejected" ? "bg-red-100 text-red-800" :
-                                "bg-yellow-100 text-yellow-800"
-                              }`}>
-                                {application.status === "approved" ? "Aprovado" :
-                                 application.status === "rejected" ? "Rejeitado" : "Pendente"}
-                              </span>
-                            </td>
+                  {filteredApplications.filter(app => app.status === 'approved').length === 0 ? (
+                    <div className="text-center py-8">
+                      <p className="text-gray-600">Nenhum pagamento encontrado no período selecionado.</p>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="text-left py-3 px-4 font-semibold text-gray-700">Data</th>
+                            <th className="text-left py-3 px-4 font-semibold text-gray-700">Projeto</th>
+                            <th className="text-left py-3 px-4 font-semibold text-gray-700">Valor Aprovado</th>
+                            <th className="text-left py-3 px-4 font-semibold text-gray-700">Estado</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200">
+                          {filteredApplications.filter(app => app.status === 'approved').map((application) => (
+                            <tr key={application.id} className="hover:bg-gray-50">
+                              <td className="py-3 px-4 text-sm text-gray-600">
+                                {application.createdAt ? format(new Date(application.createdAt), "dd/MM/yyyy", { locale: ptBR }) : "-"}
+                              </td>
+                              <td className="py-3 px-4 font-medium text-agri-dark">
+                                {application.projectName}
+                              </td>
+                              <td className="py-3 px-4 font-semibold text-agri-dark">
+                                {formatKwanza(parseFloat(application.amount))}
+                              </td>
+                              <td className="py-3 px-4">
+                                <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                  Aprovado
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Seção de Análise */}
+            {reportType === "analytics" && (
+              <div className="mt-8 space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Análise Detalhada</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid md:grid-cols-2 gap-6">
+                      <div>
+                        <h4 className="font-semibold mb-4">Métricas de Performance</h4>
+                        <div className="space-y-3">
+                          <div className="flex justify-between">
+                            <span>Taxa de Aprovação:</span>
+                            <span className="font-semibold">{approvalRate.toFixed(1)}%</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Valor Médio por Empréstimo:</span>
+                            <span className="font-semibold">{formatKwanza(stats.averageLoanSize)}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Total de Aplicações:</span>
+                            <span className="font-semibold">{stats.totalApplications}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div>
+                        <h4 className="font-semibold mb-4">Distribuição por Tipo</h4>
+                        <div className="space-y-3">
+                          {Object.entries(projectDistribution).map(([type, count]) => (
+                            <div key={type} className="flex justify-between">
+                              <span>{getProjectTypeLabel(type)}:</span>
+                              <span className="font-semibold">{count} ({stats.totalApplications > 0 ? (count / stats.totalApplications * 100).toFixed(1) : 0}%)</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            {/* Tabela de Solicitações Recentes - apenas para overview */}
+            {reportType === "overview" && (
+              <Card className="mt-8">
+                <CardHeader>
+                  <CardTitle>Solicitações Recentes</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {filteredApplications.length === 0 ? (
+                    <div className="text-center py-8">
+                      <p className="text-gray-600">Nenhuma solicitação encontrada no período selecionado.</p>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="text-left py-3 px-4 font-semibold text-gray-700">Data</th>
+                            <th className="text-left py-3 px-4 font-semibold text-gray-700">Projeto</th>
+                            <th className="text-left py-3 px-4 font-semibold text-gray-700">Tipo</th>
+                            <th className="text-left py-3 px-4 font-semibold text-gray-700">Montante</th>
+                            <th className="text-left py-3 px-4 font-semibold text-gray-700">Estado</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200">
+                          {filteredApplications.slice(0, 10).map((application) => (
+                            <tr key={application.id} className="hover:bg-gray-50">
+                              <td className="py-3 px-4 text-sm text-gray-600">
+                                {application.createdAt ? format(new Date(application.createdAt), "dd/MM/yyyy", { locale: ptBR }) : "-"}
+                              </td>
+                              <td className="py-3 px-4 font-medium text-agri-dark">
+                                {application.projectName}
+                              </td>
+                              <td className="py-3 px-4 text-sm text-gray-600">
+                                {getProjectTypeLabel(application.projectType)}
+                              </td>
+                              <td className="py-3 px-4 font-semibold text-agri-dark">
+                                {formatKwanza(parseFloat(application.amount))}
+                              </td>
+                              <td className="py-3 px-4">
+                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                  application.status === "approved" ? "bg-green-100 text-green-800" :
+                                  application.status === "rejected" ? "bg-red-100 text-red-800" :
+                                  application.status === "under_review" ? "bg-orange-100 text-orange-800" :
+                                  "bg-yellow-100 text-yellow-800"
+                                }`}>
+                                  {application.status === "approved" ? "Aprovado" :
+                                   application.status === "rejected" ? "Rejeitado" :
+                                   application.status === "under_review" ? "Em Análise" : "Pendente"}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
           </>
         )}
       </div>

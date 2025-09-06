@@ -103,7 +103,7 @@ export default function AdminDashboard() {
 
   // Reports filters state
   const [reportFilters, setReportFilters] = useState({
-    dateRange: '30', // últimos 30 dias
+    dateRange: 'all', // mostrar todas as aplicações por padrão
     startDate: '',
     endDate: '',
     reportType: 'overview' // overview, applications, users, financial
