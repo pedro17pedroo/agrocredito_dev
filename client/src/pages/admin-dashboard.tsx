@@ -59,39 +59,39 @@ export default function AdminDashboard() {
   const [rejectionReason, setRejectionReason] = useState("");
   const [activeSection, setActiveSection] = useState<AdminSection>('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [showCreateUserDialog, setShowCreateUserDialog] = useState(false);
-  const [newUser, setNewUser] = useState({
-    fullName: '',
+  const [mostrarDialogoCriarUtilizador, setMostrarDialogoCriarUtilizador] = useState(false);
+  const [novoUtilizador, setNovoUtilizador] = useState({
+    nomeCompleto: '',
     bi: '',
     nif: '',
-    phone: '',
+    telefone: '',
     email: '',
-    userType: '',
-    profileId: ''
+    tipoUtilizador: '',
+    perfilId: ''
   });
 
   // User management state
-  const [userFilters, setUserFilters] = useState({
-    search: '',
-    userType: 'all',
-    isActive: 'all',
-    page: 1,
-    itemsPerPage: 10
+  const [filtrosUtilizador, setFiltrosUtilizador] = useState({
+    pesquisa: '',
+    tipoUtilizador: 'all',
+    estaAtivo: 'all',
+    pagina: 1,
+    itensPorPagina: 10
   });
 
-  const [sortConfig, setSortConfig] = useState({
-    key: 'createdAt',
-    direction: 'desc'
+  const [configuracaoOrdenacao, setConfiguracaoOrdenacao] = useState({
+    chave: 'criadoEm',
+    direcao: 'desc'
   });
 
   // User CRUD states
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [showUserDetailsDialog, setShowUserDetailsDialog] = useState(false);
-  const [showEditUserDialog, setShowEditUserDialog] = useState(false);
-  const [editingUser, setEditingUser] = useState<Partial<User>>({});
-  const [loadingActions, setLoadingActions] = useState<{[key: string]: boolean}>({});
-  const [showDeleteConfirmDialog, setShowDeleteConfirmDialog] = useState(false);
-  const [userToDelete, setUserToDelete] = useState<User | null>(null);
+  const [utilizadorSelecionado, setUtilizadorSelecionado] = useState<User | null>(null);
+  const [mostrarDialogoDetalhesUtilizador, setMostrarDialogoDetalhesUtilizador] = useState(false);
+  const [mostrarDialogoEditarUtilizador, setMostrarDialogoEditarUtilizador] = useState(false);
+  const [utilizadorEditando, setUtilizadorEditando] = useState<Partial<User>>({});
+  const [acoesCarregando, setAcoesCarregando] = useState<{[key: string]: boolean}>({});
+  const [mostrarDialogoConfirmarEliminacao, setMostrarDialogoConfirmarEliminacao] = useState(false);
+  const [utilizadorParaEliminar, setUtilizadorParaEliminar] = useState<User | null>(null);
 
   // Application filters state
   const [applicationFilters, setApplicationFilters] = useState({
@@ -116,11 +116,14 @@ export default function AdminDashboard() {
   });
 
   // Handle different response formats based on user type
+  
   const allApplications = Array.isArray(applicationsData) 
     ? applicationsData 
     : (applicationsData as any)
       ? [...((applicationsData as any).new || []), ...((applicationsData as any).underReview || []), ...((applicationsData as any).historical || [])]
       : [];
+      
+
 
   const { data: stats } = useQuery({
     queryKey: ["/api/admin/stats"],
@@ -209,7 +212,7 @@ export default function AdminDashboard() {
   });
 
   const createUser = useMutation({
-    mutationFn: async (userData: typeof newUser) => {
+    mutationFn: async (userData: typeof novoUtilizador) => {
       const response = await apiRequest("POST", "/api/admin/users", userData);
       return response.json();
     },
@@ -219,15 +222,15 @@ export default function AdminDashboard() {
         description: "O novo utilizador foi adicionado ao sistema.",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
-      setShowCreateUserDialog(false);
-      setNewUser({
-        fullName: '',
+      setMostrarDialogoCriarUtilizador(false);
+      setNovoUtilizador({
+        nomeCompleto: '',
         bi: '',
         nif: '',
-        phone: '',
+        telefone: '',
         email: '',
-        userType: '',
-        profileId: ''
+        tipoUtilizador: '',
+        perfilId: ''
       });
     },
     onError: (error: Error) => {
@@ -251,8 +254,8 @@ export default function AdminDashboard() {
         description: "As informações do utilizador foram atualizadas.",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
-      setShowEditUserDialog(false);
-      setEditingUser({});
+      setMostrarDialogoEditarUtilizador(false);
+      setUtilizadorEditando({});
     },
     onError: (error: Error) => {
       toast({
@@ -267,7 +270,7 @@ export default function AdminDashboard() {
   const toggleUserStatus = useMutation<any, Error, { id: string; isActive: boolean }>({
     mutationFn: async ({ id, isActive }: { id: string; isActive: boolean }) => {
       // Marcar como loading
-      setLoadingActions(prev => ({ ...prev, [`toggle-${id}`]: true }));
+      setAcoesCarregando(prev => ({ ...prev, [`toggle-${id}`]: true }));
       
       const response = await apiRequest("PATCH", `/api/admin/users/${id}/status`, { isActive });
       return response.json();
@@ -279,7 +282,7 @@ export default function AdminDashboard() {
       });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
       // Remover loading
-      setLoadingActions(prev => ({ ...prev, [`toggle-${id}`]: false }));
+      setAcoesCarregando(prev => ({ ...prev, [`toggle-${id}`]: false }));
     },
     onError: (error: Error, { id }: { id: string }) => {
       toast({
@@ -288,7 +291,7 @@ export default function AdminDashboard() {
         variant: "destructive",
       });
       // Remover loading
-      setLoadingActions(prev => ({ ...prev, [`toggle-${id}`]: false }));
+      setAcoesCarregando(prev => ({ ...prev, [`toggle-${id}`]: false }));
     },
     // Adicionar configuração para evitar múltiplas requisições
     retry: false,
@@ -299,7 +302,7 @@ export default function AdminDashboard() {
   const deleteUser = useMutation({
     mutationFn: async (id: string) => {
       // Marcar como loading
-      setLoadingActions(prev => ({ ...prev, [`delete-${id}`]: true }));
+      setAcoesCarregando(prev => ({ ...prev, [`delete-${id}`]: true }));
       
       const response = await apiRequest("DELETE", `/api/admin/users/${id}`);
       return response.json();
@@ -310,10 +313,10 @@ export default function AdminDashboard() {
         description: "O utilizador foi removido do sistema.",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
-      setShowDeleteConfirmDialog(false);
-      setUserToDelete(null);
+      setMostrarDialogoConfirmarEliminacao(false);
+      setUtilizadorParaEliminar(null);
       // Remover loading
-      setLoadingActions(prev => ({ ...prev, [`delete-${id}`]: false }));
+      setAcoesCarregando(prev => ({ ...prev, [`delete-${id}`]: false }));
     },
     onError: (error: Error, id: string) => {
       toast({
@@ -321,10 +324,10 @@ export default function AdminDashboard() {
         description: error.message,
         variant: "destructive",
       });
-      setShowDeleteConfirmDialog(false);
-      setUserToDelete(null);
+      setMostrarDialogoConfirmarEliminacao(false);
+      setUtilizadorParaEliminar(null);
       // Remover loading
-      setLoadingActions(prev => ({ ...prev, [`delete-${id}`]: false }));
+      setAcoesCarregando(prev => ({ ...prev, [`delete-${id}`]: false }));
     },
     // Adicionar configuração para evitar múltiplas requisições
     retry: false,
@@ -344,6 +347,9 @@ export default function AdminDashboard() {
                 // Redirection is handled automatically in useLogin hook
               }}
               onSwitchToRegister={() => {
+                // Not needed for admin login
+              }}
+              onSwitchToForgotPassword={() => {
                 // Not needed for admin login
               }}
             />
@@ -481,7 +487,7 @@ export default function AdminDashboard() {
   );
 
   const renderCreateUserDialog = () => (
-    <Dialog open={showCreateUserDialog} onOpenChange={setShowCreateUserDialog}>
+    <Dialog open={mostrarDialogoCriarUtilizador} onOpenChange={setMostrarDialogoCriarUtilizador}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>Criar Novo Utilizador</DialogTitle>
@@ -494,8 +500,8 @@ export default function AdminDashboard() {
             <Label htmlFor="fullName">Nome Completo</Label>
             <Input
               id="fullName"
-              value={newUser.fullName}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewUser(prev => ({ ...prev, fullName: e.target.value }))}
+              value={novoUtilizador.nomeCompleto}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNovoUtilizador(prev => ({ ...prev, nomeCompleto: e.target.value }))}
               placeholder="Nome completo do utilizador"
             />
           </div>
@@ -503,8 +509,8 @@ export default function AdminDashboard() {
             <Label htmlFor="bi">Bilhete de Identidade</Label>
             <Input
               id="bi"
-              value={newUser.bi}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewUser(prev => ({ ...prev, bi: e.target.value }))}
+              value={novoUtilizador.bi}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNovoUtilizador(prev => ({ ...prev, bi: e.target.value }))}
               placeholder="000000000LA000"
             />
           </div>
@@ -512,8 +518,8 @@ export default function AdminDashboard() {
             <Label htmlFor="nif">NIF (Opcional)</Label>
             <Input
               id="nif"
-              value={newUser.nif}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewUser(prev => ({ ...prev, nif: e.target.value }))}
+              value={novoUtilizador.nif}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNovoUtilizador(prev => ({ ...prev, nif: e.target.value }))}
               placeholder="NIF do utilizador"
             />
           </div>
@@ -521,8 +527,8 @@ export default function AdminDashboard() {
             <Label htmlFor="phone">Telefone</Label>
             <Input
               id="phone"
-              value={newUser.phone}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewUser(prev => ({ ...prev, phone: e.target.value }))}
+              value={novoUtilizador.telefone}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNovoUtilizador(prev => ({ ...prev, telefone: e.target.value }))}
               placeholder="+244900000000"
             />
           </div>
@@ -531,14 +537,14 @@ export default function AdminDashboard() {
             <Input
               id="email"
               type="email"
-              value={newUser.email}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewUser(prev => ({ ...prev, email: e.target.value }))}
+              value={novoUtilizador.email}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNovoUtilizador(prev => ({ ...prev, email: e.target.value }))}
               placeholder="email@exemplo.com"
             />
           </div>
           <div>
             <Label htmlFor="userType">Tipo de Utilizador</Label>
-            <Select value={newUser.userType} onValueChange={(value: string) => setNewUser(prev => ({ ...prev, userType: value }))}>
+            <Select value={novoUtilizador.tipoUtilizador} onValueChange={(value: string) => setNovoUtilizador(prev => ({ ...prev, tipoUtilizador: value }))}>
               <SelectTrigger>
                 <SelectValue placeholder="Selecionar tipo" />
               </SelectTrigger>
@@ -553,7 +559,7 @@ export default function AdminDashboard() {
           </div>
           <div className="col-span-2">
             <Label htmlFor="profileId">Perfil</Label>
-            <Select value={newUser.profileId} onValueChange={(value: string) => setNewUser(prev => ({ ...prev, profileId: value }))}>
+            <Select value={novoUtilizador.perfilId} onValueChange={(value: string) => setNovoUtilizador(prev => ({ ...prev, perfilId: value }))}>
               <SelectTrigger>
                 <SelectValue placeholder="Selecionar perfil" />
               </SelectTrigger>
@@ -568,16 +574,16 @@ export default function AdminDashboard() {
           </div>
         </div>
         <div className="flex justify-end space-x-2 mt-6">
-          <Button variant="outline" onClick={() => setShowCreateUserDialog(false)}>
+          <Button variant="outline" onClick={() => setMostrarDialogoCriarUtilizador(false)}>
             Cancelar
           </Button>
           <Button 
             onClick={() => {
               if (!createUser.isPending) {
-                createUser.mutate(newUser);
+                createUser.mutate(novoUtilizador);
               }
             }}
-            disabled={createUser.isPending || !newUser.fullName || !newUser.bi || !newUser.phone || !newUser.userType}
+            disabled={createUser.isPending || !novoUtilizador.nomeCompleto || !novoUtilizador.bi || !novoUtilizador.telefone || !novoUtilizador.tipoUtilizador}
           >
             {createUser.isPending ? 'Criando...' : 'Criar Utilizador'}
           </Button>
@@ -692,8 +698,8 @@ export default function AdminDashboard() {
             <CardTitle>Atividade Recente</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
-              {allApplications.slice(0, 3).map((app: CreditApplication) => (
+            <div className="space-y-3 max-h-80 overflow-y-auto">
+              {allApplications.map((app: CreditApplication) => (
                 <div key={app.id} className="flex items-center space-x-3 p-2 bg-gray-50 rounded">
                   <div className="flex-1">
                     <p className="text-sm font-medium">{app.projectName}</p>
@@ -867,39 +873,39 @@ export default function AdminDashboard() {
 
   // Filter and sort users
   const filteredUsers = allUsers.filter((userData: User) => {
-    const matchesSearch = userFilters.search === '' || 
-      userData.fullName.toLowerCase().includes(userFilters.search.toLowerCase()) ||
-      userData.email?.toLowerCase().includes(userFilters.search.toLowerCase()) ||
-      userData.phone.includes(userFilters.search) ||
-      userData.bi.toLowerCase().includes(userFilters.search.toLowerCase());
+    const matchesSearch = filtrosUtilizador.pesquisa === '' || 
+      userData.fullName.toLowerCase().includes(filtrosUtilizador.pesquisa.toLowerCase()) ||
+      userData.email?.toLowerCase().includes(filtrosUtilizador.pesquisa.toLowerCase()) ||
+      userData.phone.includes(filtrosUtilizador.pesquisa) ||
+      userData.bi.toLowerCase().includes(filtrosUtilizador.pesquisa.toLowerCase());
     
-    const matchesType = userFilters.userType === 'all' || userData.userType === userFilters.userType;
-    const matchesActive = userFilters.isActive === 'all' || 
-      (userFilters.isActive === 'active' ? (userData as any).isActive : !(userData as any).isActive);
+    const matchesType = filtrosUtilizador.tipoUtilizador === 'all' || userData.userType === filtrosUtilizador.tipoUtilizador;
+    const matchesActive = filtrosUtilizador.estaAtivo === 'all' || 
+      (filtrosUtilizador.estaAtivo === 'active' ? (userData as any).isActive : !(userData as any).isActive);
     
     return matchesSearch && matchesType && matchesActive;
   });
 
   // Sort users
   const sortedUsers = [...filteredUsers].sort((a: User, b: User) => {
-    const aValue = (a as any)[sortConfig.key] || '';
-    const bValue = (b as any)[sortConfig.key] || '';
+    const aValue = (a as any)[configuracaoOrdenacao.chave] || '';
+    const bValue = (b as any)[configuracaoOrdenacao.chave] || '';
     
-    if (sortConfig.direction === 'asc') {
+    if (configuracaoOrdenacao.direcao === 'asc') {
       return aValue > bValue ? 1 : -1;
     }
     return aValue < bValue ? 1 : -1;
   });
 
   // Paginate users
-  const totalPages = Math.ceil(sortedUsers.length / userFilters.itemsPerPage);
-  const startIndex = (userFilters.page - 1) * userFilters.itemsPerPage;
-  const paginatedUsers = sortedUsers.slice(startIndex, startIndex + userFilters.itemsPerPage);
+  const totalPages = Math.ceil(sortedUsers.length / filtrosUtilizador.itensPorPagina);
+  const startIndex = (filtrosUtilizador.pagina - 1) * filtrosUtilizador.itensPorPagina;
+  const paginatedUsers = sortedUsers.slice(startIndex, startIndex + filtrosUtilizador.itensPorPagina);
 
   const handleSort = (key: string) => {
-    setSortConfig(prev => ({
-      key,
-      direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
+    setConfiguracaoOrdenacao(prev => ({
+      chave: key,
+      direcao: prev.chave === key && prev.direcao === 'asc' ? 'desc' : 'asc'
     }));
   };
 
@@ -908,7 +914,7 @@ export default function AdminDashboard() {
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">{hasPermission('users.create') ? 'Gestão de Utilizadores' : 'Utilizadores'}</h2>
         <PermissionGate permission="users.create">
-          <Button onClick={() => setShowCreateUserDialog(true)}>
+          <Button onClick={() => setMostrarDialogoCriarUtilizador(true)}>
             <UserPlus className="w-4 h-4 mr-2" />
             Criar Utilizador
           </Button>
@@ -927,13 +933,13 @@ export default function AdminDashboard() {
               <Input
                 id="search"
                 placeholder="Nome, email, telefone ou BI..."
-                value={userFilters.search}
-                onChange={(e) => setUserFilters(prev => ({ ...prev, search: e.target.value, page: 1 }))}
+                value={filtrosUtilizador.pesquisa}
+                onChange={(e) => setFiltrosUtilizador(prev => ({ ...prev, pesquisa: e.target.value, pagina: 1 }))}
               />
             </div>
             <div>
               <Label htmlFor="userType">Tipo de Utilizador</Label>
-              <Select value={userFilters.userType} onValueChange={(value: string) => setUserFilters(prev => ({ ...prev, userType: value, page: 1 }))}>
+              <Select value={filtrosUtilizador.tipoUtilizador} onValueChange={(value: string) => setFiltrosUtilizador(prev => ({ ...prev, tipoUtilizador: value, pagina: 1 }))}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -949,7 +955,7 @@ export default function AdminDashboard() {
             </div>
             <div>
               <Label htmlFor="isActive">Estado</Label>
-              <Select value={userFilters.isActive} onValueChange={(value: string) => setUserFilters(prev => ({ ...prev, isActive: value, page: 1 }))}>
+              <Select value={filtrosUtilizador.estaAtivo} onValueChange={(value: string) => setFiltrosUtilizador(prev => ({ ...prev, estaAtivo: value, pagina: 1 }))}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -962,7 +968,7 @@ export default function AdminDashboard() {
             </div>
             <div>
               <Label htmlFor="itemsPerPage">Itens por Página</Label>
-              <Select value={userFilters.itemsPerPage.toString()} onValueChange={(value: string) => setUserFilters(prev => ({ ...prev, itemsPerPage: parseInt(value), page: 1 }))}>
+              <Select value={filtrosUtilizador.itensPorPagina.toString()} onValueChange={(value: string) => setFiltrosUtilizador(prev => ({ ...prev, itensPorPagina: parseInt(value), pagina: 1 }))}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -977,11 +983,11 @@ export default function AdminDashboard() {
           </div>
           <div className="mt-4 flex justify-between items-center">
             <p className="text-sm text-gray-600">
-              Mostrando {startIndex + 1}-{Math.min(startIndex + userFilters.itemsPerPage, sortedUsers.length)} de {sortedUsers.length} utilizadores
-            </p>
+            Mostrando {startIndex + 1}-{Math.min(startIndex + filtrosUtilizador.itensPorPagina, sortedUsers.length)} de {sortedUsers.length} utilizadores
+          </p>
             <Button
               variant="outline"
-              onClick={() => setUserFilters({ search: '', userType: 'all', isActive: 'all', page: 1, itemsPerPage: 10 })}
+              onClick={() => setFiltrosUtilizador({ pesquisa: '', tipoUtilizador: 'all', estaAtivo: 'all', pagina: 1, itensPorPagina: 10 })}
             >
               Limpar Filtros
             </Button>
@@ -997,27 +1003,27 @@ export default function AdminDashboard() {
                 <TableHead 
                   className="cursor-pointer hover:bg-gray-50"
                   onClick={() => handleSort('fullName')}
-                >
-                  Nome {sortConfig.key === 'fullName' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+          >
+            Nome {configuracaoOrdenacao.chave === 'fullName' && (configuracaoOrdenacao.direcao === 'asc' ? '↑' : '↓')}
                 </TableHead>
                 <TableHead>Email/Telefone</TableHead>
                 <TableHead 
                   className="cursor-pointer hover:bg-gray-50"
                   onClick={() => handleSort('userType')}
-                >
-                  Tipo {sortConfig.key === 'userType' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+          >
+            Tipo {configuracaoOrdenacao.chave === 'userType' && (configuracaoOrdenacao.direcao === 'asc' ? '↑' : '↓')}
                 </TableHead>
                 <TableHead 
                   className="cursor-pointer hover:bg-gray-50"
                   onClick={() => handleSort('isActive')}
-                >
-                  Estado {sortConfig.key === 'isActive' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+          >
+            Estado {configuracaoOrdenacao.chave === 'isActive' && (configuracaoOrdenacao.direcao === 'asc' ? '↑' : '↓')}
                 </TableHead>
                 <TableHead 
                   className="cursor-pointer hover:bg-gray-50"
                   onClick={() => handleSort('createdAt')}
-                >
-                  Data de Criação {sortConfig.key === 'createdAt' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+          >
+            Data de Criação {configuracaoOrdenacao.chave === 'createdAt' && (configuracaoOrdenacao.direcao === 'asc' ? '↑' : '↓')}
                 </TableHead>
                 <PermissionGate anyPermissions={['users.update', 'users.delete']}>
                   <TableHead>Ações</TableHead>
@@ -1063,8 +1069,8 @@ export default function AdminDashboard() {
                           variant="ghost" 
                           size="sm"
                           onClick={() => {
-                            setSelectedUser(userData);
-                            setShowUserDetailsDialog(true);
+                            setUtilizadorSelecionado(userData);
+                  setMostrarDialogoDetalhesUtilizador(true);
                           }}
                           title="Visualizar detalhes"
                         >
@@ -1077,8 +1083,8 @@ export default function AdminDashboard() {
                             onClick={() => {
                               // Filtrar campos de timestamp para evitar conflitos
                               const { createdAt, updatedAt, ...editableData } = userData;
-                              setEditingUser(editableData);
-                              setShowEditUserDialog(true);
+                  setUtilizadorEditando(editableData);
+                  setMostrarDialogoEditarUtilizador(true);
                             }}
                             title="Editar utilizador"
                           >
@@ -1090,18 +1096,18 @@ export default function AdminDashboard() {
                             variant="ghost" 
                             size="sm"
                             onClick={() => {
-                              if (!toggleUserStatus.isPending && !loadingActions[`toggle-${userData.id}`]) {
+                              if (!toggleUserStatus.isPending && !acoesCarregando[`toggle-${userData.id}`]) {
                                 toggleUserStatus.mutate({ 
                                   id: userData.id, 
                                   isActive: !(userData as any).isActive 
                                 });
                               }
                             }}
-                            disabled={toggleUserStatus.isPending || loadingActions[`toggle-${userData.id}`]}
+                            disabled={toggleUserStatus.isPending || acoesCarregando[`toggle-${userData.id}`]}
                             title={(userData as any).isActive ? 'Desativar utilizador' : 'Ativar utilizador'}
                             className={(userData as any).isActive ? 'text-red-600 hover:text-red-700' : 'text-green-600 hover:text-green-700'}
                           >
-                            {loadingActions[`toggle-${userData.id}`] ? (
+                            {acoesCarregando[`toggle-${userData.id}`] ? (
                               <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
                             ) : (
                               (userData as any).isActive ? <XCircle className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />
@@ -1113,8 +1119,8 @@ export default function AdminDashboard() {
                             variant="ghost" 
                             size="sm"
                             onClick={() => {
-                              setUserToDelete(userData);
-                              setShowDeleteConfirmDialog(true);
+                              setUtilizadorParaEliminar(userData);
+              setMostrarDialogoConfirmarEliminacao(true);
                             }}
                             title="Eliminar utilizador"
                             className="text-red-600 hover:text-red-700"
@@ -1140,15 +1146,15 @@ export default function AdminDashboard() {
               <div className="flex items-center space-x-2">
                 <Button
                   variant="outline"
-                  disabled={userFilters.page === 1}
-                  onClick={() => setUserFilters(prev => ({ ...prev, page: 1 }))}
+                  disabled={filtrosUtilizador.pagina === 1}
+                  onClick={() => setFiltrosUtilizador(prev => ({ ...prev, pagina: 1 }))}
                 >
                   Primeira
                 </Button>
                 <Button
                   variant="outline"
-                  disabled={userFilters.page === 1}
-                  onClick={() => setUserFilters(prev => ({ ...prev, page: prev.page - 1 }))}
+                  disabled={filtrosUtilizador.pagina === 1}
+                  onClick={() => setFiltrosUtilizador(prev => ({ ...prev, pagina: prev.pagina - 1 }))}
                 >
                   Anterior
                 </Button>
@@ -1156,13 +1162,13 @@ export default function AdminDashboard() {
               
               <div className="flex items-center space-x-2">
                 {Array.from({ length: Math.min(5, totalPages) }).map((_, i) => {
-                  const pageNumber = Math.max(1, userFilters.page - 2) + i;
+                  const pageNumber = Math.max(1, filtrosUtilizador.pagina - 2) + i;
                   if (pageNumber <= totalPages) {
                     return (
                       <Button
                         key={pageNumber}
-                        variant={pageNumber === userFilters.page ? "default" : "outline"}
-                        onClick={() => setUserFilters(prev => ({ ...prev, page: pageNumber }))}
+                        variant={pageNumber === filtrosUtilizador.pagina ? "default" : "outline"}
+                        onClick={() => setFiltrosUtilizador(prev => ({ ...prev, pagina: pageNumber }))}
                       >
                         {pageNumber}
                       </Button>
@@ -1175,22 +1181,22 @@ export default function AdminDashboard() {
               <div className="flex items-center space-x-2">
                 <Button
                   variant="outline"
-                  disabled={userFilters.page === totalPages}
-                  onClick={() => setUserFilters(prev => ({ ...prev, page: prev.page + 1 }))}
+                  disabled={filtrosUtilizador.pagina === totalPages}
+                  onClick={() => setFiltrosUtilizador(prev => ({ ...prev, pagina: prev.pagina + 1 }))}
                 >
                   Próxima
                 </Button>
                 <Button
                   variant="outline"
-                  disabled={userFilters.page === totalPages}
-                  onClick={() => setUserFilters(prev => ({ ...prev, page: totalPages }))}
+                  disabled={filtrosUtilizador.pagina === totalPages}
+                  onClick={() => setFiltrosUtilizador(prev => ({ ...prev, pagina: totalPages }))}
                 >
                   Última
                 </Button>
               </div>
             </div>
             <div className="mt-2 text-center text-sm text-gray-600">
-              Página {userFilters.page} de {totalPages}
+              Página {filtrosUtilizador.pagina} de {totalPages}
             </div>
           </CardContent>
         </Card>
@@ -1440,28 +1446,33 @@ export default function AdminDashboard() {
 
   // Função para calcular dados dos relatórios
   const getReportData = useMemo(() => {
-    if (!allApplications.length) return {
-      statusData: [],
-      projectTypeData: [],
-      monthlyData: [],
-      amountRangeData: [],
-      totalStats: {
-        totalApplications: 0,
-        totalAmount: 0,
-        approvedApplications: 0,
-        approvedAmount: 0,
-        rejectedApplications: 0,
-        pendingApplications: 0
-      }
-    };
+    if (!allApplications.length) {
+      return {
+        statusData: [],
+        projectTypeData: [],
+        monthlyData: [],
+        amountRangeData: [],
+        totalStats: {
+          totalApplications: 0,
+          totalAmount: 0,
+          approvedApplications: 0,
+          approvedAmount: 0,
+          rejectedApplications: 0,
+          pendingApplications: 0
+        }
+      };
+    }
 
     // Filtrar aplicações por data se necessário
     let filteredApps = allApplications;
     const now = new Date();
     
+
+    
     if (reportFilters.dateRange !== 'all') {
       const days = parseInt(reportFilters.dateRange);
       const startDate = subDays(now, days);
+      
       filteredApps = allApplications.filter(app => 
         new Date(app.createdAt) >= startDate
       );
@@ -1470,6 +1481,7 @@ export default function AdminDashboard() {
     if (reportFilters.startDate && reportFilters.endDate) {
       const start = new Date(reportFilters.startDate);
       const end = new Date(reportFilters.endDate);
+      
       filteredApps = allApplications.filter(app => 
         isWithinInterval(new Date(app.createdAt), { start, end })
       );
@@ -1548,6 +1560,8 @@ export default function AdminDashboard() {
       rejectedApplications: filteredApps.filter(app => app.status === 'rejected').length,
       pendingApplications: filteredApps.filter(app => app.status === 'pending').length
     };
+    
+
 
     return {
       statusData,
@@ -2093,10 +2107,10 @@ export default function AdminDashboard() {
 
   // Diálogo de visualização de detalhes do utilizador
   function renderUserDetailsDialog() {
-    if (!selectedUser) return null;
+    if (!utilizadorSelecionado) return null;
 
     return (
-      <Dialog open={showUserDetailsDialog} onOpenChange={setShowUserDetailsDialog}>
+      <Dialog open={mostrarDialogoDetalhesUtilizador} onOpenChange={setMostrarDialogoDetalhesUtilizador}>
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Detalhes do Utilizador</DialogTitle>
@@ -2112,31 +2126,31 @@ export default function AdminDashboard() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label className="text-sm font-medium text-gray-700">Nome Completo</Label>
-                  <p className="text-sm bg-gray-50 p-2 rounded">{selectedUser.fullName}</p>
+                  <p className="text-sm bg-gray-50 p-2 rounded">{utilizadorSelecionado.fullName}</p>
                 </div>
                 <div className="space-y-2">
                   <Label className="text-sm font-medium text-gray-700">Bilhete de Identidade</Label>
-                  <p className="text-sm bg-gray-50 p-2 rounded">{selectedUser.bi}</p>
+                  <p className="text-sm bg-gray-50 p-2 rounded">{utilizadorSelecionado.bi}</p>
                 </div>
                 <div className="space-y-2">
                   <Label className="text-sm font-medium text-gray-700">NIF</Label>
-                  <p className="text-sm bg-gray-50 p-2 rounded">{selectedUser.nif || 'Não informado'}</p>
+                  <p className="text-sm bg-gray-50 p-2 rounded">{utilizadorSelecionado.nif || 'Não informado'}</p>
                 </div>
                 <div className="space-y-2">
                   <Label className="text-sm font-medium text-gray-700">Telefone</Label>
-                  <p className="text-sm bg-gray-50 p-2 rounded">{selectedUser.phone}</p>
+                  <p className="text-sm bg-gray-50 p-2 rounded">{utilizadorSelecionado.phone}</p>
                 </div>
                 <div className="space-y-2">
                   <Label className="text-sm font-medium text-gray-700">Email</Label>
-                  <p className="text-sm bg-gray-50 p-2 rounded">{selectedUser.email || 'Não informado'}</p>
+                  <p className="text-sm bg-gray-50 p-2 rounded">{utilizadorSelecionado.email || 'Não informado'}</p>
                 </div>
                 <div className="space-y-2">
                   <Label className="text-sm font-medium text-gray-700">Tipo de Utilizador</Label>
                   <Badge variant="outline">
-                    {selectedUser.userType === 'farmer' ? 'Agricultor' :
-                     selectedUser.userType === 'company' ? 'Empresa' :
-                     selectedUser.userType === 'cooperative' ? 'Cooperativa' :
-                     selectedUser.userType === 'financial_institution' ? 'Inst. Financeira' :
+                    {utilizadorSelecionado.userType === 'farmer' ? 'Agricultor' :
+              utilizadorSelecionado.userType === 'company' ? 'Empresa' :
+              utilizadorSelecionado.userType === 'cooperative' ? 'Cooperativa' :
+              utilizadorSelecionado.userType === 'financial_institution' ? 'Inst. Financeira' :
                      'Administrador'}
                   </Badge>
                 </div>
@@ -2149,14 +2163,14 @@ export default function AdminDashboard() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label className="text-sm font-medium text-gray-700">Estado</Label>
-                  <Badge variant={(selectedUser as any).isActive ? 'default' : 'secondary'}>
-                    {(selectedUser as any).isActive ? 'Ativo' : 'Inativo'}
+                  <Badge variant={(utilizadorSelecionado as any).isActive ? 'default' : 'secondary'}>
+                {(utilizadorSelecionado as any).isActive ? 'Ativo' : 'Inativo'}
                   </Badge>
                 </div>
                 <div className="space-y-2">
                   <Label className="text-sm font-medium text-gray-700">Data de Criação</Label>
                   <p className="text-sm bg-gray-50 p-2 rounded">
-                    {selectedUser.createdAt ? format(new Date(selectedUser.createdAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR }) : 'Não informado'}
+                    {utilizadorSelecionado.createdAt ? format(new Date(utilizadorSelecionado.createdAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR }) : 'Não informado'}
                   </p>
                 </div>
               </div>
@@ -2170,7 +2184,7 @@ export default function AdminDashboard() {
   // Diálogo de edição de utilizador
   function renderEditUserDialog() {
     return (
-      <Dialog open={showEditUserDialog} onOpenChange={setShowEditUserDialog}>
+      <Dialog open={mostrarDialogoEditarUtilizador} onOpenChange={setMostrarDialogoEditarUtilizador}>
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Editar Utilizador</DialogTitle>
@@ -2185,9 +2199,9 @@ export default function AdminDashboard() {
                 <Label htmlFor="edit-fullName">Nome Completo *</Label>
                 <Input
                   id="edit-fullName"
-                  value={editingUser.fullName || ''}
+                  value={utilizadorEditando.fullName || ''}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => 
-                    setEditingUser(prev => ({ ...prev, fullName: e.target.value }))
+                    setUtilizadorEditando(prev => ({ ...prev, fullName: e.target.value }))
                   }
                   placeholder="Nome completo"
                 />
@@ -2196,9 +2210,9 @@ export default function AdminDashboard() {
                 <Label htmlFor="edit-bi">Bilhete de Identidade *</Label>
                 <Input
                   id="edit-bi"
-                  value={editingUser.bi || ''}
+                  value={utilizadorEditando.bi || ''}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => 
-                    setEditingUser(prev => ({ ...prev, bi: e.target.value }))
+                    setUtilizadorEditando(prev => ({ ...prev, bi: e.target.value }))
                   }
                   placeholder="Número do BI"
                 />
@@ -2207,9 +2221,9 @@ export default function AdminDashboard() {
                 <Label htmlFor="edit-nif">NIF</Label>
                 <Input
                   id="edit-nif"
-                  value={editingUser.nif || ''}
+                  value={utilizadorEditando.nif || ''}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => 
-                    setEditingUser(prev => ({ ...prev, nif: e.target.value }))
+                    setUtilizadorEditando(prev => ({ ...prev, nif: e.target.value }))
                   }
                   placeholder="Número de Identificação Fiscal"
                 />
@@ -2218,9 +2232,9 @@ export default function AdminDashboard() {
                 <Label htmlFor="edit-phone">Telefone *</Label>
                 <Input
                   id="edit-phone"
-                  value={editingUser.phone || ''}
+                  value={utilizadorEditando.phone || ''}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => 
-                    setEditingUser(prev => ({ ...prev, phone: e.target.value }))
+                    setUtilizadorEditando(prev => ({ ...prev, phone: e.target.value }))
                   }
                   placeholder="Número de telefone"
                 />
@@ -2230,9 +2244,9 @@ export default function AdminDashboard() {
                 <Input
                   id="edit-email"
                   type="email"
-                  value={editingUser.email || ''}
+                  value={utilizadorEditando.email || ''}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => 
-                    setEditingUser(prev => ({ ...prev, email: e.target.value }))
+                    setUtilizadorEditando(prev => ({ ...prev, email: e.target.value }))
                   }
                   placeholder="Endereço de email"
                 />
@@ -2240,9 +2254,9 @@ export default function AdminDashboard() {
               <div className="space-y-2">
                 <Label htmlFor="edit-userType">Tipo de Utilizador *</Label>
                 <Select
-                  value={editingUser.userType || ''}
+                  value={utilizadorEditando.userType || ''}
                   onValueChange={(value: "farmer" | "company" | "cooperative" | "financial_institution" | "admin") => 
-                    setEditingUser(prev => ({ ...prev, userType: value }))
+                    setUtilizadorEditando(prev => ({ ...prev, userType: value }))
                   }
                 >
                   <SelectTrigger>
@@ -2263,22 +2277,22 @@ export default function AdminDashboard() {
               <Button 
                 variant="outline" 
                 onClick={() => {
-                  setShowEditUserDialog(false);
-                  setEditingUser({});
+                  setMostrarDialogoEditarUtilizador(false);
+                  setUtilizadorEditando({});
                 }}
               >
                 Cancelar
               </Button>
               <Button 
                 onClick={() => {
-                  if (editingUser.id && !updateUser.isPending) {
+                  if (utilizadorEditando.id && !updateUser.isPending) {
                     updateUser.mutate({ 
-                      id: editingUser.id, 
-                      userData: editingUser 
+                      id: utilizadorEditando.id, 
+                      userData: utilizadorEditando 
                     });
                   }
                 }}
-                disabled={updateUser.isPending || !editingUser.fullName || !editingUser.bi || !editingUser.phone || !editingUser.userType}
+                disabled={updateUser.isPending || !utilizadorEditando.fullName || !utilizadorEditando.bi || !utilizadorEditando.phone || !utilizadorEditando.userType}
               >
                 {updateUser.isPending ? 'Atualizando...' : 'Atualizar'}
               </Button>
@@ -2292,7 +2306,7 @@ export default function AdminDashboard() {
   // Diálogo de confirmação de eliminação
   function renderDeleteConfirmDialog() {
     return (
-      <Dialog open={showDeleteConfirmDialog} onOpenChange={setShowDeleteConfirmDialog}>
+      <Dialog open={mostrarDialogoConfirmarEliminacao} onOpenChange={setMostrarDialogoConfirmarEliminacao}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Confirmar Eliminação</DialogTitle>
@@ -2301,20 +2315,20 @@ export default function AdminDashboard() {
             </DialogDescription>
           </DialogHeader>
           
-          {userToDelete && (
+          {utilizadorParaEliminar && (
             <div className="space-y-4">
               <div className="bg-gray-50 p-4 rounded">
-                <p className="font-medium">{userToDelete.fullName}</p>
-                <p className="text-sm text-gray-600">{userToDelete.email || userToDelete.phone}</p>
-                <p className="text-sm text-gray-600">BI: {userToDelete.bi}</p>
+                <p className="font-medium">{utilizadorParaEliminar.fullName}</p>
+                <p className="text-sm text-gray-600">{utilizadorParaEliminar.email || utilizadorParaEliminar.phone}</p>
+                <p className="text-sm text-gray-600">BI: {utilizadorParaEliminar.bi}</p>
               </div>
               
               <div className="flex justify-end space-x-2">
                 <Button 
                   variant="outline" 
                   onClick={() => {
-                    setShowDeleteConfirmDialog(false);
-                    setUserToDelete(null);
+                    setMostrarDialogoConfirmarEliminacao(false);
+                    setUtilizadorParaEliminar(null);
                   }}
                 >
                   Cancelar
@@ -2322,13 +2336,13 @@ export default function AdminDashboard() {
                 <Button 
                   variant="destructive"
                   onClick={() => {
-                    if (userToDelete.id && !deleteUser.isPending && !loadingActions[`delete-${userToDelete.id}`]) {
-                      deleteUser.mutate(userToDelete.id);
+                    if (utilizadorParaEliminar.id && !deleteUser.isPending && !acoesCarregando[`delete-${utilizadorParaEliminar.id}`]) {
+                      deleteUser.mutate(utilizadorParaEliminar.id);
                     }
                   }}
-                  disabled={deleteUser.isPending || Boolean(userToDelete?.id && loadingActions[`delete-${userToDelete.id}`])}
+                  disabled={deleteUser.isPending || Boolean(utilizadorParaEliminar?.id && acoesCarregando[`delete-${utilizadorParaEliminar.id}`])}
                 >
-                  {(deleteUser.isPending || (userToDelete?.id && loadingActions[`delete-${userToDelete.id}`])) ? 'Eliminando...' : 'Eliminar'}
+                  {(deleteUser.isPending || (utilizadorParaEliminar?.id && acoesCarregando[`delete-${utilizadorParaEliminar.id}`])) ? 'Eliminando...' : 'Eliminar'}
                 </Button>
               </div>
             </div>

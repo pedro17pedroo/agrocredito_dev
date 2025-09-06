@@ -14,20 +14,20 @@ import { apiRequest } from "../../lib/queryClient";
 
 // Schemas para cada etapa
 const requestOtpSchema = z.object({
-  contact: z.string().email("Email inválido"),
-  deliveryMethod: z.literal("email"),
+  contato: z.string().email("Email inválido"),
+  metodoEntrega: z.literal("email"),
 });
 
 const validateOtpSchema = z.object({
-  otp: z.string().min(1, "Código é obrigatório").max(6, "Código deve ter no máximo 6 dígitos"),
+  codigoOtp: z.string().min(1, "Código é obrigatório").max(6, "Código deve ter no máximo 6 dígitos"),
 });
 
 const resetPasswordSchema = z.object({
-  newPassword: z.string().min(6, "Senha deve ter pelo menos 6 caracteres"),
-  confirmPassword: z.string(),
-}).refine((data) => data.newPassword === data.confirmPassword, {
+  novaPalavraPasse: z.string().min(6, "Senha deve ter pelo menos 6 caracteres"),
+  confirmarPalavraPasse: z.string(),
+}).refine((data) => data.novaPalavraPasse === data.confirmarPalavraPasse, {
   message: "Senhas não coincidem",
-  path: ["confirmPassword"],
+  path: ["confirmarPalavraPasse"],
 });
 
 type RequestOtpForm = z.infer<typeof requestOtpSchema>;
@@ -56,8 +56,8 @@ export default function ForgotPasswordForm({ onSuccess, onBackToLogin }: ForgotP
   const requestForm = useForm<RequestOtpForm>({
     resolver: zodResolver(requestOtpSchema),
     defaultValues: {
-      contact: "",
-      deliveryMethod: "email",
+      contato: "",
+      metodoEntrega: "email",
     },
   });
 
@@ -65,7 +65,7 @@ export default function ForgotPasswordForm({ onSuccess, onBackToLogin }: ForgotP
   const validateForm = useForm<ValidateOtpForm>({
     resolver: zodResolver(validateOtpSchema),
     defaultValues: {
-      otp: "",
+      codigoOtp: "",
     },
   });
 
@@ -75,21 +75,21 @@ export default function ForgotPasswordForm({ onSuccess, onBackToLogin }: ForgotP
   const resetForm = useForm<ResetPasswordForm>({
     resolver: zodResolver(resetPasswordSchema),
     defaultValues: {
-      newPassword: "",
-      confirmPassword: "",
+      novaPalavraPasse: "",
+      confirmarPalavraPasse: "",
     },
   });
 
   const onRequestOtp = async (data: RequestOtpForm) => {
     const result = await requestPasswordReset({ 
-      contact: data.contact,
-      deliveryMethod: data.deliveryMethod
+      contact: data.contato,
+      deliveryMethod: data.metodoEntrega
     });
     if (result.success) {
-      setContact(data.contact);
+      setContact(data.contato);
       setTokenId(result.data?.tokenId || "");
       // Resetar o formulário de validação para garantir que o campo OTP esteja limpo
-      validateForm.reset({ otp: "" });
+      validateForm.reset({ codigoOtp: "" });
       setStep("validate");
     }
   };
@@ -97,10 +97,10 @@ export default function ForgotPasswordForm({ onSuccess, onBackToLogin }: ForgotP
   const onValidateOtp = async (data: ValidateOtpForm) => {
     const result = await validateOTP({ 
       tokenId: tokenId, 
-      otp: data.otp 
+      otp: data.codigoOtp 
     });
     if (result.success) {
-      setOtp(data.otp);
+      setOtp(data.codigoOtp);
       setStep("reset");
       toast({
         title: "Código validado",
@@ -113,7 +113,7 @@ export default function ForgotPasswordForm({ onSuccess, onBackToLogin }: ForgotP
     const result = await resetPassword({
       tokenId: tokenId,
       otp: otp,
-      newPassword: data.newPassword
+      newPassword: data.novaPalavraPasse
     });
     
     if (result.success) {
@@ -136,7 +136,7 @@ export default function ForgotPasswordForm({ onSuccess, onBackToLogin }: ForgotP
         <form onSubmit={requestForm.handleSubmit(onRequestOtp)} className="space-y-6">
           <FormField
             control={requestForm.control}
-            name="contact"
+            name="contato"
             render={({ field }: { field: any }) => (
               <FormItem>
                 <FormLabel className="form-label">Email</FormLabel>
@@ -228,10 +228,10 @@ export default function ForgotPasswordForm({ onSuccess, onBackToLogin }: ForgotP
               autoCapitalize="off"
               spellCheck={false}
               autoFocus
-              value={validateForm.watch('otp') || ''}
+              value={validateForm.watch('codigoOtp') || ''}
               onChange={(e) => {
                 const value = e.target.value.replace(/[^0-9]/g, '').slice(0, 6);
-                validateForm.setValue('otp', value);
+                validateForm.setValue('codigoOtp', value);
               }}
             />
           </div>
@@ -288,7 +288,7 @@ export default function ForgotPasswordForm({ onSuccess, onBackToLogin }: ForgotP
         <form onSubmit={resetForm.handleSubmit(onResetPassword)} className="space-y-6">
           <FormField
             control={resetForm.control}
-            name="newPassword"
+            name="novaPalavraPasse"
             render={({ field }: { field: any }) => (
               <FormItem>
                 <FormLabel className="form-label">Nova Palavra-passe</FormLabel>
@@ -316,7 +316,7 @@ export default function ForgotPasswordForm({ onSuccess, onBackToLogin }: ForgotP
           
           <FormField
             control={resetForm.control}
-            name="confirmPassword"
+            name="confirmarPalavraPasse"
             render={({ field }: { field: any }) => (
               <FormItem>
                 <FormLabel className="form-label">Confirmar Palavra-passe</FormLabel>

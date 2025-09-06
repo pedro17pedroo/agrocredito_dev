@@ -26,7 +26,14 @@ const checkAdminAccess = (req: any, res: any, next: any) => {
 router.use(checkAdminAccess);
 
 // Application management routes
-router.get("/credit-applications", CreditApplicationController.getForFinancialInstitution);
+router.get("/credit-applications", (req: any, res, next) => {
+  // Se for admin, usar método que retorna todas as aplicações
+  if (req.user.userType === "admin") {
+    return CreditApplicationController.getAllForAdmin(req, res);
+  }
+  // Se for instituição financeira, usar método filtrado
+  return CreditApplicationController.getForFinancialInstitution(req, res);
+});
 router.get("/credit-applications/:id", CreditApplicationController.getById);
 router.patch("/credit-applications/:id/status", CreditApplicationController.updateStatus);
 

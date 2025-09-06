@@ -182,23 +182,39 @@ export default function Reports() {
   const [, setLocation] = useLocation();
   const [reportType, setReportType] = useState("overview");
   const [dateRange, setDateRange] = useState({
-    from: startOfMonth(subMonths(new Date(), 6)),
+    from: new Date('2020-01-01'), // Data muito anterior para incluir todos os dados
     to: endOfMonth(new Date()),
   });
 
   const { data: applications = [], isLoading: applicationsLoading } = useQuery<CreditApplication[]>({
-    queryKey: ["/api/credit-applications/user"],
+    queryKey: user?.userType === "admin" ? ["/api/admin/credit-applications"] : ["/api/credit-applications/user"],
     queryFn: async () => {
-      const response = await apiRequest("GET", "/api/credit-applications/user");
-      return response.json();
+      const endpoint = user?.userType === "admin" ? "/api/admin/credit-applications" : "/api/credit-applications/user";
+      
+      console.log('🔍 [REPORTS] === INICIANDO BUSCA DE DADOS ===');
+      console.log('🔍 [REPORTS] Endpoint usado:', endpoint);
+      console.log('🔍 [REPORTS] Tipo de usuário:', user?.userType);
+      console.log('🔍 [REPORTS] Timestamp:', new Date().toISOString());
+      
+      const response = await apiRequest("GET", endpoint);
+      const data = await response.json();
+      
+      // Para administradores, o endpoint retorna um objeto com arrays separados
+      if (user?.userType === "admin" && data.new && data.underReview && data.historical) {
+        const combined = [...data.new, ...data.underReview, ...data.historical];
+        return combined;
+      }
+      
+      return data;
     },
     enabled: !!user,
   });
 
   const { data: accounts = [], isLoading: accountsLoading } = useQuery<Account[]>({
-    queryKey: ["/api/accounts/user"],
+    queryKey: user?.userType === "admin" ? ["/api/admin/accounts"] : ["/api/accounts/user"],
     queryFn: async () => {
-      const response = await apiRequest("GET", "/api/accounts/user");
+      const endpoint = user?.userType === "admin" ? "/api/admin/accounts" : "/api/accounts/user";
+      const response = await apiRequest("GET", endpoint);
       return response.json();
     },
     enabled: !!user,
@@ -216,36 +232,50 @@ export default function Reports() {
   const isLoading = applicationsLoading || accountsLoading || paymentsLoading;
 
   // Filtrar dados por período
-  const filteredApplications = applications.filter(app => 
-    app.createdAt && 
-    parseISO(app.createdAt.toString()) >= dateRange.from && 
-    parseISO(app.createdAt.toString()) <= dateRange.to
-  );
+  const filteredApplications = applications.filter(app => {
+    if (!app.createdAt) return false;
+    
+    // Usar new Date() em vez de parseISO() pois as datas vêm como Date objects da BD
+    const appDate = new Date(app.createdAt);
+    return appDate >= dateRange.from && appDate <= dateRange.to;
+  });
 
-  const filteredPayments = allPayments.filter(payment => 
-    payment.paymentDate && 
-    parseISO(payment.paymentDate.toString()) >= dateRange.from && 
-    parseISO(payment.paymentDate.toString()) <= dateRange.to
-  );
+
+
+  const filteredPayments = allPayments.filter(payment => {
+    if (!payment.paymentDate) return false;
+    
+    // Usar new Date() em vez de parseISO() pois as datas vêm como Date objects da BD
+    const paymentDate = new Date(payment.paymentDate);
+    return paymentDate >= dateRange.from && paymentDate <= dateRange.to;
+  });
 
   // Calcular estatísticas
+  const datasetToUse = user?.userType === "admin" ? applications : filteredApplications;
+  
+  const approvedApps = datasetToUse.filter(app => app.status === "approved");
+  const rejectedApps = datasetToUse.filter(app => app.status === "rejected");
+  const pendingApps = datasetToUse.filter(app => app.status === "pending");
+  const underReviewApps = datasetToUse.filter(app => app.status === "under_review");
+  
   const stats = {
-    totalApplications: filteredApplications.length,
-    approvedApplications: filteredApplications.filter(app => app.status === "approved").length,
-    rejectedApplications: filteredApplications.filter(app => app.status === "rejected").length,
-    pendingApplications: filteredApplications.filter(app => app.status === "pending").length,
-    totalCreditValue: filteredApplications.reduce((sum, app) => sum + parseFloat(app.amount), 0),
-    approvedCreditValue: filteredApplications
-      .filter(app => app.status === "approved")
-      .reduce((sum, app) => sum + parseFloat(app.amount), 0),
+    totalApplications: datasetToUse.length,
+    approvedApplications: approvedApps.length,
+    rejectedApplications: rejectedApps.length,
+    pendingApplications: pendingApps.length,
+    totalCreditValue: datasetToUse.reduce((sum, app) => sum + parseFloat(app.amount), 0),
+    approvedCreditValue: approvedApps.reduce((sum, app) => sum + parseFloat(app.amount), 0),
     totalPayments: filteredPayments.reduce((sum, payment) => sum + parseFloat(payment.amount), 0),
-    averageLoanSize: filteredApplications.length > 0 
-      ? filteredApplications.reduce((sum, app) => sum + parseFloat(app.amount), 0) / filteredApplications.length 
+    averageLoanSize: datasetToUse.length > 0 
+      ? datasetToUse.reduce((sum, app) => sum + parseFloat(app.amount), 0) / datasetToUse.length 
       : 0,
   };
+  
+
+
 
   // Distribuição por tipo de projeto
-  const projectDistribution = filteredApplications.reduce((acc, app) => {
+  const projectDistribution = (user?.userType === "admin" ? applications : filteredApplications).reduce((acc, app) => {
     acc[app.projectType] = (acc[app.projectType] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);

@@ -153,25 +153,28 @@ export function registerRoutes(app: Express): Server {
         return res.status(401).json({ message: "User not authenticated" });
       }
       
-      console.log("[REPORTS] User authenticated:", req.user.id, req.user.userType);
-      
       // Import storage here to avoid circular dependencies
       const { storage } = await import("../storage");
       
-      // Get all accounts for the user
-      const accounts = await storage.getAccountsByUserId(req.user.id);
-      console.log("[REPORTS] Found accounts:", accounts.length);
+      let allPayments = [];
       
-      const allPayments = [];
-      
-      // Get payments for each account
-      for (const account of accounts) {
-        const payments = await storage.getPaymentsByAccountId(account.id);
-        console.log(`[REPORTS] Account ${account.id} has ${payments.length} payments`);
-        allPayments.push(...payments);
+      if (req.user.userType === "admin") {
+        // Para administradores, obter todos os pagamentos do sistema
+        const allAccounts = await storage.getAllAccounts();
+        
+        for (const account of allAccounts) {
+          const payments = await storage.getPaymentsByAccountId(account.id);
+          allPayments.push(...payments);
+        }
+      } else {
+        // Para usuários normais, obter apenas os pagamentos das suas contas
+        const accounts = await storage.getAccountsByUserId(req.user.id);
+        
+        for (const account of accounts) {
+          const payments = await storage.getPaymentsByAccountId(account.id);
+          allPayments.push(...payments);
+        }
       }
-      
-      console.log("[REPORTS] Total payments found:", allPayments.length);
       res.json(allPayments);
     } catch (error: any) {
       console.error("Get reports payments error:", error);

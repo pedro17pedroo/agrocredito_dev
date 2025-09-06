@@ -16,37 +16,37 @@ import FinancialInstitutionSelector from "./financial-institution-selector";
 const simulatorSchema = z.object({
   amount: z.string().min(1, "Montante é obrigatório"),
   term: z.string().min(1, "Prazo é obrigatório"),
-  projectType: z.enum(["corn", "cassava", "cattle", "poultry", "horticulture", "other"]),
+  projectType: z.enum(["milho", "mandioca", "gado", "avicultura", "horticultura", "outro"]),
   monthlyIncome: z.string().min(1, "Rendimento mensal é obrigatório"),
 });
 
 type SimulatorForm = z.infer<typeof simulatorSchema>;
 
 interface SimulationResult {
-  monthlyPayment: number;
-  totalAmount: number;
-  interestRate: number;
-  totalInterest: number;
-  monthlyIncome: number;
-  effortRate: number;
-  effortRatePercentage: number;
-  isEffortRateViolated: boolean;
-  maxMonthlyPayment: number;
+  prestacaoMensal: number;
+  montanteTotal: number;
+  taxaJuro: number;
+  jurosTotal: number;
+  rendimentoMensal: number;
+  taxaEsforco: number;
+  percentagemTaxaEsforco: number;
+  taxaEsforcoViolada: boolean;
+  prestacaoMensalMaxima: number;
 }
 
 interface CreditProgram {
   id: string;
-  name: string;
-  description: string;
-  projectTypes: string[];
-  minAmount: string;
-  maxAmount: string;
-  minTerm: number;
-  maxTerm: number;
-  interestRate: string;
-  effortRate: string;
-  processingFee: string;
-  financialInstitutionId: string;
+  nome: string;
+  descricao: string;
+  tiposProjeto: string[];
+  montanteMinimo: string;
+  montanteMaximo: string;
+  prazoMinimo: number;
+  prazoMaximo: number;
+  taxaJuro: string;
+  taxaEsforco: string;
+  taxaProcessamento: string;
+  instituicaoFinanceiraId: string;
 }
 
 export default function SimulatorForm() {
@@ -60,23 +60,35 @@ export default function SimulatorForm() {
     defaultValues: {
       amount: "AOA 5,000,000",
       term: "36",
-      projectType: "other", // Alterado para "other" para mostrar todos os programas por padrão
+      projectType: "outro", // Alterado para "outro" para mostrar todos os programas por padrão
       monthlyIncome: "",
     },
   });
 
   const simulate = useMutation({
-    mutationFn: async (data: SimulatorForm) => {
+    mutationFn: async (formData: SimulatorForm) => {
       const simulationData = {
-        amount: parseKwanza(data.amount),
-        term: parseInt(data.term),
-        projectType: data.projectType,
-        monthlyIncome: parseKwanza(data.monthlyIncome),
+        amount: parseKwanza(formData.amount),
+        term: parseInt(formData.term),
+        projectType: formData.projectType,
+        monthlyIncome: parseKwanza(formData.monthlyIncome),
         creditProgramId: selectedProgram || undefined,
       };
       
       const response = await apiRequest("POST", "/api/simulate-credit", simulationData);
-      return response.json() as Promise<SimulationResult>;
+      const data = await response.json();
+      // Mapear as propriedades do backend (em inglês) para o frontend (em português)
+      return {
+        prestacaoMensal: data.monthlyPayment,
+        montanteTotal: data.totalAmount,
+        taxaJuro: data.interestRate,
+        jurosTotal: data.totalInterest,
+        rendimentoMensal: data.monthlyIncome,
+        taxaEsforco: data.effortRate,
+        percentagemTaxaEsforco: data.effortRatePercentage,
+        taxaEsforcoViolada: data.isEffortRateViolated,
+        prestacaoMensalMaxima: data.maxMonthlyPayment
+      } as SimulationResult;
     },
     onSuccess: (data) => {
       setResult(data);
@@ -109,25 +121,25 @@ export default function SimulatorForm() {
     setSelectedProgramData(program);
     setResult(null);
     
-    // Update form values based on selected program
+    // Atualizar valores do formulário baseado no programa selecionado
     if (program) {
       const amount = parseKwanza(form.getValues('amount'));
-      const minAmount = parseInt(program.minAmount);
-      const maxAmount = parseInt(program.maxAmount);
+      const minAmount = parseInt(program.montanteMinimo);
+      const maxAmount = parseInt(program.montanteMaximo);
       
-      // Ensure amount is within program limits
+      // Garantir que o montante está dentro dos limites do programa
       if (amount < minAmount) {
         form.setValue('amount', formatKwanza(minAmount));
       } else if (amount > maxAmount) {
         form.setValue('amount', formatKwanza(maxAmount));
       }
       
-      // Ensure term is within program limits
+      // Garantir que o prazo está dentro dos limites do programa
       const term = parseInt(form.getValues('term'));
-      if (term < program.minTerm) {
-        form.setValue('term', program.minTerm.toString());
-      } else if (term > program.maxTerm) {
-        form.setValue('term', program.maxTerm.toString());
+      if (term < program.prazoMinimo) {
+        form.setValue('term', program.prazoMinimo.toString());
+      } else if (term > program.prazoMaximo) {
+        form.setValue('term', program.prazoMaximo.toString());
       }
     }
   };
@@ -205,12 +217,12 @@ export default function SimulatorForm() {
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="corn">Cultivo de Milho</SelectItem>
-                      <SelectItem value="cassava">Cultivo de Mandioca</SelectItem>
-                      <SelectItem value="cattle">Criação de Gado</SelectItem>
-                      <SelectItem value="poultry">Avicultura</SelectItem>
-                      <SelectItem value="horticulture">Horticultura</SelectItem>
-                      <SelectItem value="other">Outro</SelectItem>
+                      <SelectItem value="milho">Cultivo de Milho</SelectItem>
+                      <SelectItem value="mandioca">Cultivo de Mandioca</SelectItem>
+                      <SelectItem value="gado">Criação de Gado</SelectItem>
+                      <SelectItem value="avicultura">Avicultura</SelectItem>
+                      <SelectItem value="horticultura">Horticultura</SelectItem>
+                      <SelectItem value="outro">Outro</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -263,23 +275,23 @@ export default function SimulatorForm() {
           <div className="mt-8 p-6 bg-agri-light rounded-xl border-l-4 border-agri-primary">
             <h3 className="text-xl font-bold text-agri-dark mb-4">Resultado da Simulação</h3>
             
-            {/* Program Info */}
+            {/* Informações do Programa */}
             {selectedProgramData && (
               <div className="mb-4 p-3 bg-orange-50 border border-orange-200 rounded-lg">
                 <p className="text-sm text-orange-800">
-                  <strong>Programa:</strong> {selectedProgramData.name} - 
-                  <strong> Taxa aplicada:</strong> {selectedProgramData.interestRate}% a.a. - 
-                  <strong> Taxa de esforço máx:</strong> {selectedProgramData.effortRate}%
+                  <strong>Programa:</strong> {selectedProgramData.nome} - 
+                  <strong> Taxa aplicada:</strong> {selectedProgramData.taxaJuro}% a.a. - 
+                  <strong> Taxa de esforço máx:</strong> {selectedProgramData.taxaEsforco}%
                 </p>
               </div>
             )}
             
-            {/* Effort Rate Warning */}
-            {result.isEffortRateViolated && (
+            {/* Aviso da Taxa de Esforço */}
+            {result.taxaEsforcoViolada && (
               <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
                 <p className="text-sm text-red-800">
-                  <strong>⚠️ Aviso:</strong> A prestação calculada ({formatKwanza(result.maxMonthlyPayment + 1)}) excede a taxa de esforço máxima.
-                  O valor foi ajustado para {formatKwanza(result.maxMonthlyPayment)} (máx. {result.effortRate}% do rendimento).
+                  <strong>⚠️ Aviso:</strong> A prestação calculada ({formatKwanza(result.prestacaoMensalMaxima + 1)}) excede a taxa de esforço máxima.
+                  O valor foi ajustado para {formatKwanza(result.prestacaoMensalMaxima)} (máx. {result.taxaEsforco}% do rendimento).
                 </p>
               </div>
             )}
@@ -287,22 +299,22 @@ export default function SimulatorForm() {
             <div className="grid sm:grid-cols-3 gap-4">
               <div className="text-center">
                 <div className="text-2xl font-bold text-agri-primary">
-                  {formatKwanza(result.monthlyPayment)}
+                  {formatKwanza(result.prestacaoMensal)}
                 </div>
                 <div className="text-sm text-gray-600">Prestação Mensal</div>
                 <div className="text-xs text-gray-500 mt-1">
-                  {result.effortRatePercentage.toFixed(1)}% do rendimento
+                  {result.percentagemTaxaEsforco.toFixed(1)}% do rendimento
                 </div>
               </div>
               <div className="text-center">
                 <div className="text-2xl font-bold text-agri-secondary">
-                  {formatKwanza(result.totalAmount)}
+                  {formatKwanza(result.montanteTotal)}
                 </div>
                 <div className="text-sm text-gray-600">Total a Pagar</div>
               </div>
               <div className="text-center">
                 <div className="text-2xl font-bold text-orange-500">
-                  {result.interestRate}% a.a.
+                  {result.taxaJuro}% a.a.
                 </div>
                 <div className="text-sm text-gray-600">Taxa de Juro</div>
               </div>
@@ -311,12 +323,12 @@ export default function SimulatorForm() {
             <div className="mt-4 grid sm:grid-cols-2 gap-4 text-center">
               <div>
                 <div className="text-lg text-gray-700">
-                  <strong>Juros totais:</strong> {formatKwanza(result.totalInterest)}
+                  <strong>Juros totais:</strong> {formatKwanza(result.jurosTotal)}
                 </div>
               </div>
               <div>
                 <div className="text-lg text-gray-700">
-                  <strong>Rendimento declarado:</strong> {formatKwanza(result.monthlyIncome)}
+                  <strong>Rendimento declarado:</strong> {formatKwanza(result.rendimentoMensal)}
                 </div>
               </div>
             </div>
@@ -325,18 +337,18 @@ export default function SimulatorForm() {
             <div className="mt-4 p-3 bg-gray-50 rounded-lg">
               <div className="flex justify-between text-sm text-gray-600 mb-2">
                 <span>Taxa de Esforço Atual</span>
-                <span>{result.effortRatePercentage.toFixed(1)}% / {result.effortRate}%</span>
+                <span>{result.percentagemTaxaEsforco.toFixed(1)}% / {result.taxaEsforco}%</span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-3">
                 <div 
                   className={`h-3 rounded-full transition-all ${
-                    result.effortRatePercentage > result.effortRate 
+                    result.percentagemTaxaEsforco > result.taxaEsforco 
                       ? 'bg-red-500' 
-                      : result.effortRatePercentage > result.effortRate * 0.8 
+                      : result.percentagemTaxaEsforco > result.taxaEsforco * 0.8 
                         ? 'bg-yellow-500' 
                         : 'bg-green-500'
                   }`}
-                  style={{ width: `${Math.min((result.effortRatePercentage / result.effortRate) * 100, 100)}%` }}
+                  style={{ width: `${Math.min((result.percentagemTaxaEsforco / result.taxaEsforco) * 100, 100)}%` }}
                 ></div>
               </div>
             </div>

@@ -9,8 +9,8 @@ import { Input } from "../ui/input";
 import { useLogin } from "../../hooks/use-auth";
 
 const loginSchema = z.object({
-  loginIdentifier: z.string().min(1, "Email ou telefone é obrigatório"),
-  password: z.string().min(1, "Palavra-passe é obrigatória"),
+  identificadorLogin: z.string().min(1, "Email ou telefone é obrigatório"),
+  palavraPasse: z.string().min(1, "Palavra-passe é obrigatória"),
 });
 
 type LoginForm = z.infer<typeof loginSchema>;
@@ -28,13 +28,18 @@ export default function LoginForm({ onSuccess, onSwitchToRegister, onSwitchToFor
   const form = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      loginIdentifier: "",
-      password: "",
+      identificadorLogin: "",
+      palavraPasse: "",
     },
   });
 
   const onSubmit = (data: LoginForm) => {
-    login.mutate(data, {
+    // Mapear os campos para o formato esperado pelo backend
+    const submitData = {
+      loginIdentifier: data.identificadorLogin,
+      password: data.palavraPasse,
+    };
+    login.mutate(submitData, {
       onSuccess,
     });
   };
@@ -51,7 +56,7 @@ export default function LoginForm({ onSuccess, onSwitchToRegister, onSwitchToFor
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
           <FormField
             control={form.control}
-            name="loginIdentifier"
+            name="identificadorLogin"
             render={({ field }: { field: any }) => (
               <FormItem>
                 <FormLabel className="form-label">Email ou Telemóvel</FormLabel>
@@ -72,7 +77,7 @@ export default function LoginForm({ onSuccess, onSwitchToRegister, onSwitchToFor
           
           <FormField
             control={form.control}
-            name="password"
+            name="palavraPasse"
             render={({ field }: { field: any }) => (
               <FormItem>
                 <FormLabel className="form-label">Palavra-passe</FormLabel>

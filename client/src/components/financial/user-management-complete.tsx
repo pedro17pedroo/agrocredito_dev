@@ -29,79 +29,79 @@ import {
   Settings
 } from "lucide-react";
 
-// Form schemas
-const internalUserSchema = z.object({
-  fullName: z.string().min(2, "Nome deve ter pelo menos 2 caracteres"),
+// Esquemas de formulário
+const esquemaUtilizadorInterno = z.object({
+  nomeCompleto: z.string().min(2, "Nome deve ter pelo menos 2 caracteres"),
   bi: z.string().min(6, "BI deve ter pelo menos 6 caracteres"),
   nif: z.string().optional(),
-  phone: z.string().regex(/^\+244\d{9}$/, "Formato: +244XXXXXXXXX"),
+  telefone: z.string().regex(/^\+244\d{9}$/, "Formato: +244XXXXXXXXX"),
   email: z.string().email("Email inválido").optional().or(z.literal("")),
-  password: z.string().min(6, "Palavra-passe deve ter pelo menos 6 caracteres"),
-  userType: z.literal("financial_institution"),
-  profileId: z.string().optional(),
+  palavraPasse: z.string().min(6, "Palavra-passe deve ter pelo menos 6 caracteres"),
+  tipoUtilizador: z.literal("financial_institution"),
+  perfilId: z.string().optional(),
 });
 
-type InternalUserForm = z.infer<typeof internalUserSchema>;
+type FormularioUtilizadorInterno = z.infer<typeof esquemaUtilizadorInterno>;
 
-interface User {
+interface Utilizador {
   id: string;
-  fullName: string;
-  phone: string;
+  nomeCompleto: string;
+  telefone: string;
   email?: string;
-  userType: string;
-  profileId?: string;
-  isActive: boolean;
-  createdAt: string;
+  tipoUtilizador: string;
+  perfilId?: string;
+  estaAtivo: boolean;
+  criadoEm: string;
 }
 
-interface Profile {
+interface Perfil {
   id: string;
-  name: string;
-  description?: string;
+  nome: string;
+  descricao?: string;
 }
 
 export default function UserManagementComplete() {
-  const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [showEditDialog, setShowEditDialog] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [mostrarDialogoCriar, setMostrarDialogoCriar] = useState(false);
+  const [mostrarDialogoEditar, setMostrarDialogoEditar] = useState(false);
+  const [utilizadorSelecionado, setUtilizadorSelecionado] = useState<Utilizador | null>(null);
+  const [termoPesquisa, setTermoPesquisa] = useState("");
   const { toast } = useToast();
 
-  const form = useForm<InternalUserForm>({
-    resolver: zodResolver(internalUserSchema),
+  const form = useForm<FormularioUtilizadorInterno>({
+    resolver: zodResolver(esquemaUtilizadorInterno),
     defaultValues: {
-      fullName: "",
+      nomeCompleto: "",
       bi: "",
       nif: "",
-      phone: "+244",
+      telefone: "+244",
       email: "",
-      password: "",
-      userType: "financial_institution",
-      profileId: "none",
+      palavraPasse: "",
+      tipoUtilizador: "financial_institution",
+      perfilId: "none",
     },
   });
 
-  // Queries
-  const { data: internalUsers = [], isLoading: isLoadingInternal } = useQuery<User[]>({
+  // Consultas
+  const { data: utilizadoresInternos = [], isLoading: carregandoInternos } = useQuery<Utilizador[]>({
     queryKey: ["/api/financial-users/internal"],
   });
 
-  const { data: clients = [], isLoading: isLoadingClients } = useQuery<User[]>({
+  const { data: clientes = [], isLoading: carregandoClientes } = useQuery<Utilizador[]>({
     queryKey: ["/api/financial-users/clients"],
   });
 
-  const { data: profiles = [] } = useQuery<Profile[]>({
+  const { data: perfis = [] } = useQuery<Perfil[]>({
     queryKey: ["/api/financial-users/profiles"],
   });
 
-  // Mutations
-  const createUser = useMutation({
-    mutationFn: async (data: InternalUserForm) => {
+  // Mutações
+  const criarUtilizador = useMutation({
+    mutationFn: async (data: FormularioUtilizadorInterno) => {
       return apiRequest("POST", "/api/financial-users/internal", data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/financial-users/internal"] });
-      setShowCreateDialog(false);
+      setMostrarDialogoCriar(false);
       form.reset();
       toast({
         title: "Sucesso",
@@ -119,14 +119,14 @@ export default function UserManagementComplete() {
         },
   });
 
-  const updateUser = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: Partial<InternalUserForm> }) => {
+  const atualizarUtilizador = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: Partial<FormularioUtilizadorInterno> }) => {
       return apiRequest("PATCH", `/api/financial-users/internal/${id}`, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/financial-users/internal"] });
-      setShowEditDialog(false);
-      setSelectedUser(null);
+      setMostrarDialogoEditar(false);
+      setUtilizadorSelecionado(null);
       form.reset();
       toast({
         title: "Sucesso",
@@ -144,7 +144,7 @@ export default function UserManagementComplete() {
         },
   });
 
-  const deactivateUser = useMutation({
+  const desativarUtilizador = useMutation({
     mutationFn: async (id: string) => {
       return apiRequest("PATCH", `/api/financial-users/internal/${id}/deactivate`);
     },
@@ -166,7 +166,7 @@ export default function UserManagementComplete() {
         },
   });
 
-  const assignProfile = useMutation({
+  const atribuirPerfil = useMutation({
     mutationFn: async ({ userId, profileId }: { userId: string; profileId: string }) => {
       return apiRequest("PATCH", `/api/financial-users/internal/${userId}/profile`, { profileId });
     },
@@ -186,204 +186,198 @@ export default function UserManagementComplete() {
     },
   });
 
-  const handleCreateUser = () => {
-    setShowCreateDialog(true);
+  const lidarComCriarUtilizador = () => {
+    setMostrarDialogoCriar(true);
     form.reset();
   };
 
-  const handleEditUser = (user: User) => {
-    setSelectedUser(user);
+  const lidarComEditarUtilizador = (utilizador: Utilizador) => {
+    setUtilizadorSelecionado(utilizador);
     form.reset({
-      fullName: user.fullName,
-      bi: "", // Don't prefill sensitive data
+      nomeCompleto: utilizador.nomeCompleto,
+      bi: "", // Não preencher dados sensíveis
       nif: "",
-      phone: user.phone,
-      email: user.email || "",
-      password: "", // Don't prefill password
-      userType: "financial_institution",
-      profileId: user.profileId || "none",
+      telefone: utilizador.telefone,
+      email: utilizador.email || "",
+      palavraPasse: "", // Não preencher palavra-passe
+      tipoUtilizador: "financial_institution",
+      perfilId: utilizador.perfilId || "none",
     });
-    setShowEditDialog(true);
+    setMostrarDialogoEditar(true);
   };
 
-  const onSubmit = (data: InternalUserForm) => {
-    // Find the "Instituição Financeira" profile
-    const financialInstitutionProfile = profiles.find(p => p.name === "Instituição Financeira");
+  const aoSubmeter = (data: FormularioUtilizadorInterno) => {
+    // Encontrar o perfil "Instituição Financeira"
+    const perfilInstituicaoFinanceira = perfis.find(p => p.nome === "Instituição Financeira");
     
-    if (selectedUser) {
-      // Don't send password if it's empty (meaning no change)
-      const updateData = { ...data };
-      if (!updateData.password) {
-        delete updateData.password;
-      }
-      updateUser.mutate({ id: selectedUser.id, data: updateData });
+    if (utilizadorSelecionado) {
+      // Não enviar palavra-passe se estiver vazia (sem alteração)
+       const dadosAtualizacao: Partial<FormularioUtilizadorInterno> = { ...data };
+       if (!dadosAtualizacao.palavraPasse) {
+         delete (dadosAtualizacao as any).palavraPasse;
+       }
+      atualizarUtilizador.mutate({ id: utilizadorSelecionado.id, data: dadosAtualizacao });
     } else {
-      // For new users, automatically assign financial institution profile
-      const newUserData = {
+      // Para novos utilizadores, atribuir automaticamente o perfil de instituição financeira
+      const dadosNovoUtilizador = {
         ...data,
-        profileId: financialInstitutionProfile?.id || data.profileId
+        perfilId: perfilInstituicaoFinanceira?.id || data.perfilId
       };
-      createUser.mutate(newUserData);
+      criarUtilizador.mutate(dadosNovoUtilizador);
     }
   };
 
-  // Filter users based on search term
-  const filteredInternalUsers = internalUsers.filter(user =>
-    user.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.phone.includes(searchTerm) ||
-    (user.email && user.email.toLowerCase().includes(searchTerm.toLowerCase()))
+  // Filtrar utilizadores baseado no termo de pesquisa
+  const utilizadoresInternosFiltrados = utilizadoresInternos.filter(utilizador =>
+    utilizador.nomeCompleto.toLowerCase().includes(termoPesquisa.toLowerCase()) ||
+    utilizador.telefone.includes(termoPesquisa) ||
+    (utilizador.email && utilizador.email.toLowerCase().includes(termoPesquisa.toLowerCase()))
   );
 
-  const filteredClients = clients.filter(user =>
-    user.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.phone.includes(searchTerm) ||
-    (user.email && user.email.toLowerCase().includes(searchTerm.toLowerCase()))
+  const clientesFiltrados = clientes.filter(utilizador =>
+    utilizador.nomeCompleto.toLowerCase().includes(termoPesquisa.toLowerCase()) ||
+    utilizador.telefone.includes(termoPesquisa) ||
+    (utilizador.email && utilizador.email.toLowerCase().includes(termoPesquisa.toLowerCase()))
   );
 
-  const getUserTypeLabel = (userType: string) => {
-    const types: { [key: string]: string } = {
+  const obterRotuloTipoUtilizador = (tipoUtilizador: string) => {
+    const tipos: { [key: string]: string } = {
       farmer: "Agricultor",
       company: "Empresa",
       cooperative: "Cooperativa",
       financial_institution: "Inst. Financeira",
       admin: "Administrador",
     };
-    return types[userType] || userType;
+    return tipos[tipoUtilizador] || tipoUtilizador;
   };
 
-  const getProfileName = (profileId?: string) => {
-    if (!profileId) return "Sem perfil";
-    const profile = profiles.find(p => p.id === profileId);
-    return profile?.name || "Perfil desconhecido";
+  const obterNomePerfil = (perfilId?: string) => {
+    if (!perfilId) return "Sem perfil";
+    const perfil = perfis.find(p => p.id === perfilId);
+    return perfil?.nome || "Perfil desconhecido";
   };
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Cabeçalho */}
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Gestão de Utilizadores</h2>
           <p className="text-gray-600">Gerir equipa interna e visualizar clientes</p>
         </div>
-        <Button onClick={handleCreateUser} className="bg-agri-primary hover:bg-agri-dark">
+        <Button onClick={lidarComCriarUtilizador} className="bg-agri-primary hover:bg-agri-dark">
           <UserPlus className="w-4 h-4 mr-2" />
           Adicionar Utilizador
         </Button>
       </div>
 
-      {/* Search */}
+      {/* Pesquisa */}
       <div className="flex items-center space-x-2">
         <Search className="w-4 h-4 text-gray-400" />
         <Input
           placeholder="Pesquisar utilizadores..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
+          value={termoPesquisa}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTermoPesquisa(e.target.value)}
           className="max-w-sm"
         />
       </div>
 
-      {/* Tabs */}
+      {/* Separadores */}
       <Tabs defaultValue="internal" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="internal" className="flex items-center gap-2">
+          <TabsTrigger value="internal" className="flex items-center space-x-2">
             <Building2 className="w-4 h-4" />
-            Equipa Interna ({internalUsers.length})
+            <span>Equipa Interna ({utilizadoresInternosFiltrados.length})</span>
           </TabsTrigger>
-          <TabsTrigger value="clients" className="flex items-center gap-2">
+          <TabsTrigger value="clients" className="flex items-center space-x-2">
             <Users className="w-4 h-4" />
-            Clientes ({clients.length})
+            <span>Clientes ({clientesFiltrados.length})</span>
           </TabsTrigger>
         </TabsList>
 
+        {/* Equipa Interna */}
         <TabsContent value="internal">
           <Card>
             <CardHeader>
-              <CardTitle>Equipa Interna</CardTitle>
+              <CardTitle className="flex items-center space-x-2">
+                <Shield className="w-5 h-5" />
+                <span>Utilizadores Internos</span>
+              </CardTitle>
               <CardDescription>
-                Membros da equipa desta instituição financeira
+                Membros da equipa com acesso ao sistema
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Nome</TableHead>
-                    <TableHead>Contacto</TableHead>
-                    <TableHead>Perfil</TableHead>
-                    <TableHead>Estado</TableHead>
-                    <TableHead>Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {isLoadingInternal ? (
+              {carregandoInternos ? (
+                <div className="text-center py-4">A carregar...</div>
+              ) : utilizadoresInternosFiltrados.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                  <p>Nenhum utilizador interno encontrado</p>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center">Carregando...</TableCell>
+                      <TableHead>Nome</TableHead>
+                      <TableHead>Contacto</TableHead>
+                      <TableHead>Tipo</TableHead>
+                      <TableHead>Perfil</TableHead>
+                      <TableHead>Estado</TableHead>
+                      <TableHead>Ações</TableHead>
                     </TableRow>
-                  ) : filteredInternalUsers.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={5} className="text-center">Nenhum utilizador encontrado</TableCell>
-                    </TableRow>
-                  ) : (
-                    filteredInternalUsers.map((user) => (
-                      <TableRow key={user.id}>
-                        <TableCell className="font-medium">{user.fullName}</TableCell>
+                  </TableHeader>
+                  <TableBody>
+                    {utilizadoresInternosFiltrados.map((utilizador) => (
+                      <TableRow key={utilizador.id}>
+                        <TableCell className="font-medium">
+                          {utilizador.nomeCompleto}
+                        </TableCell>
                         <TableCell>
                           <div className="space-y-1">
-                            <div className="flex items-center gap-1 text-sm">
+                            <div className="flex items-center space-x-1">
                               <Phone className="w-3 h-3" />
-                              {user.phone}
+                              <span className="text-sm">{utilizador.telefone}</span>
                             </div>
-                            {user.email && (
-                              <div className="flex items-center gap-1 text-sm text-gray-600">
+                            {utilizador.email && (
+                              <div className="flex items-center space-x-1">
                                 <Mail className="w-3 h-3" />
-                                {user.email}
+                                <span className="text-sm">{utilizador.email}</span>
                               </div>
                             )}
                           </div>
                         </TableCell>
                         <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Badge variant="outline">{getProfileName(user.profileId)}</Badge>
-                            <Select
-                              value={user.profileId || "none"}
-                              onValueChange={(profileId) => {
-                                const actualProfileId = profileId === "none" ? "" : profileId;
-                                assignProfile.mutate({ userId: user.id, profileId: actualProfileId });
-                              }}
-                            >
-                              <SelectTrigger className="w-8 h-8 p-0">
-                                <Settings className="w-4 h-4" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="none">Sem perfil</SelectItem>
-                                {profiles.map((profile) => (
-                                  <SelectItem key={profile.id} value={profile.id}>
-                                    {profile.name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={user.isActive ? "default" : "secondary"}>
-                            {user.isActive ? "Ativo" : "Inativo"}
+                          <Badge variant="secondary">
+                            {obterRotuloTipoUtilizador(utilizador.tipoUtilizador)}
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          <div className="flex items-center gap-2">
+                          <Badge variant="outline">
+                            {obterNomePerfil(utilizador.perfilId)}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge 
+                            variant={utilizador.estaAtivo ? "default" : "destructive"}
+                          >
+                            {utilizador.estaAtivo ? "Ativo" : "Inativo"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center space-x-2">
                             <Button
-                              variant="outline"
+                              variant="ghost"
                               size="sm"
-                              onClick={() => handleEditUser(user)}
+                              onClick={() => lidarComEditarUtilizador(utilizador)}
                             >
                               <Edit className="w-4 h-4" />
                             </Button>
-                            {user.isActive && (
+                            {utilizador.estaAtivo && (
                               <Button
-                                variant="outline"
+                                variant="ghost"
                                 size="sm"
-                                onClick={() => deactivateUser.mutate(user.id)}
+                                onClick={() => desativarUtilizador.mutate(utilizador.id)}
                               >
                                 <UserX className="w-4 h-4" />
                               </Button>
@@ -391,119 +385,127 @@ export default function UserManagementComplete() {
                           </div>
                         </TableCell>
                       </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
 
+        {/* Clientes */}
         <TabsContent value="clients">
           <Card>
             <CardHeader>
-              <CardTitle>Clientes</CardTitle>
+              <CardTitle className="flex items-center space-x-2">
+                <Users className="w-5 h-5" />
+                <span>Clientes</span>
+              </CardTitle>
               <CardDescription>
-                Agricultores, empresas e cooperativas registadas no sistema
+                Utilizadores registados na plataforma
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Nome</TableHead>
-                    <TableHead>Tipo</TableHead>
-                    <TableHead>Contacto</TableHead>
-                    <TableHead>Estado</TableHead>
-                    <TableHead>Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {isLoadingClients ? (
+              {carregandoClientes ? (
+                <div className="text-center py-4">A carregar...</div>
+              ) : clientesFiltrados.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                  <p>Nenhum cliente encontrado</p>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center">Carregando...</TableCell>
+                      <TableHead>Nome</TableHead>
+                      <TableHead>Contacto</TableHead>
+                      <TableHead>Tipo</TableHead>
+                      <TableHead>Estado</TableHead>
+                      <TableHead>Registado</TableHead>
                     </TableRow>
-                  ) : filteredClients.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={5} className="text-center">Nenhum cliente encontrado</TableCell>
-                    </TableRow>
-                  ) : (
-                    filteredClients.map((client) => (
-                      <TableRow key={client.id}>
-                        <TableCell className="font-medium">{client.fullName}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{getUserTypeLabel(client.userType)}</Badge>
+                  </TableHeader>
+                  <TableBody>
+                    {clientesFiltrados.map((cliente) => (
+                      <TableRow key={cliente.id}>
+                        <TableCell className="font-medium">
+                          {cliente.nomeCompleto}
                         </TableCell>
                         <TableCell>
                           <div className="space-y-1">
-                            <div className="flex items-center gap-1 text-sm">
+                            <div className="flex items-center space-x-1">
                               <Phone className="w-3 h-3" />
-                              {client.phone}
+                              <span className="text-sm">{cliente.telefone}</span>
                             </div>
-                            {client.email && (
-                              <div className="flex items-center gap-1 text-sm text-gray-600">
+                            {cliente.email && (
+                              <div className="flex items-center space-x-1">
                                 <Mail className="w-3 h-3" />
-                                {client.email}
+                                <span className="text-sm">{cliente.email}</span>
                               </div>
                             )}
                           </div>
                         </TableCell>
                         <TableCell>
-                          <Badge variant={client.isActive ? "default" : "secondary"}>
-                            {client.isActive ? "Ativo" : "Inativo"}
+                          <Badge variant="secondary">
+                            {obterRotuloTipoUtilizador(cliente.tipoUtilizador)}
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          <Button
-                            variant="outline"
-                            size="sm"
+                          <Badge 
+                            variant={cliente.estaAtivo ? "default" : "destructive"}
                           >
-                            <Eye className="w-4 h-4" />
-                          </Button>
+                            {cliente.estaAtivo ? "Ativo" : "Inativo"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <span className="text-sm text-gray-500">
+                            {new Date(cliente.criadoEm).toLocaleDateString('pt-AO')}
+                          </span>
                         </TableCell>
                       </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
 
-      {/* Create/Edit User Dialog */}
-      <Dialog open={showCreateDialog || showEditDialog} onOpenChange={(open) => {
+      {/* Diálogo Criar/Editar Utilizador */}
+      <Dialog open={mostrarDialogoCriar || mostrarDialogoEditar} onOpenChange={(open: boolean) => {
         if (!open) {
-          setShowCreateDialog(false);
-          setShowEditDialog(false);
-          setSelectedUser(null);
+          setMostrarDialogoCriar(false);
+          setMostrarDialogoEditar(false);
+          setUtilizadorSelecionado(null);
           form.reset();
         }
       }}>
-        <DialogContent className="sm:max-w-[525px]">
+        <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>
-              {selectedUser ? "Editar Utilizador" : "Criar Utilizador"}
+              {utilizadorSelecionado ? "Editar Utilizador" : "Criar Utilizador"}
             </DialogTitle>
             <DialogDescription>
-              {selectedUser 
-                ? "Atualize as informações do utilizador da equipa interna."
-                : "Adicione um novo membro à equipa interna da instituição."
+              {utilizadorSelecionado 
+                ? "Atualizar informações do utilizador" 
+                : "Adicionar novo membro à equipa"
               }
             </DialogDescription>
           </DialogHeader>
           
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={form.handleSubmit(aoSubmeter)} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="fullName">Nome Completo</Label>
+                <Label htmlFor="nomeCompleto">Nome Completo</Label>
                 <Input
-                  id="fullName"
-                  {...form.register("fullName")}
+                  id="nomeCompleto"
+                  {...form.register("nomeCompleto")}
                   placeholder="Nome completo"
                 />
-                {form.formState.errors.fullName && (
-                  <p className="text-sm text-red-500">{form.formState.errors.fullName.message}</p>
+                {form.formState.errors.nomeCompleto && (
+                  <p className="text-sm text-red-500">
+                    {form.formState.errors.nomeCompleto.message}
+                  </p>
                 )}
               </div>
               
@@ -512,24 +514,28 @@ export default function UserManagementComplete() {
                 <Input
                   id="bi"
                   {...form.register("bi")}
-                  placeholder="Bilhete de Identidade"
+                  placeholder="Número do BI"
                 />
                 {form.formState.errors.bi && (
-                  <p className="text-sm text-red-500">{form.formState.errors.bi.message}</p>
+                  <p className="text-sm text-red-500">
+                    {form.formState.errors.bi.message}
+                  </p>
                 )}
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="phone">Telefone</Label>
+                <Label htmlFor="telefone">Telefone</Label>
                 <Input
-                  id="phone"
-                  {...form.register("phone")}
+                  id="telefone"
+                  {...form.register("telefone")}
                   placeholder="+244XXXXXXXXX"
                 />
-                {form.formState.errors.phone && (
-                  <p className="text-sm text-red-500">{form.formState.errors.phone.message}</p>
+                {form.formState.errors.telefone && (
+                  <p className="text-sm text-red-500">
+                    {form.formState.errors.telefone.message}
+                  </p>
                 )}
               </div>
               
@@ -538,7 +544,7 @@ export default function UserManagementComplete() {
                 <Input
                   id="nif"
                   {...form.register("nif")}
-                  placeholder="Número de Identificação Fiscal"
+                  placeholder="Número do NIF"
                 />
               </div>
             </div>
@@ -552,86 +558,70 @@ export default function UserManagementComplete() {
                 placeholder="email@exemplo.com"
               />
               {form.formState.errors.email && (
-                <p className="text-sm text-red-500">{form.formState.errors.email.message}</p>
+                <p className="text-sm text-red-500">
+                  {form.formState.errors.email.message}
+                </p>
               )}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password">
-                {selectedUser ? "Nova Palavra-passe (Opcional)" : "Palavra-passe"}
+              <Label htmlFor="palavraPasse">
+                {utilizadorSelecionado ? "Nova Palavra-passe (deixar vazio para manter)" : "Palavra-passe"}
               </Label>
               <Input
-                id="password"
+                id="palavraPasse"
                 type="password"
-                {...form.register("password")}
-                placeholder={selectedUser ? "Deixe vazio para manter atual" : "Palavra-passe"}
+                {...form.register("palavraPasse")}
+                placeholder="Palavra-passe"
               />
-              {form.formState.errors.password && (
-                <p className="text-sm text-red-500">{form.formState.errors.password.message}</p>
+              {form.formState.errors.palavraPasse && (
+                <p className="text-sm text-red-500">
+                  {form.formState.errors.palavraPasse.message}
+                </p>
               )}
             </div>
 
-            {selectedUser && (
-              <div className="space-y-2">
-                <Label htmlFor="profileId">Perfil</Label>
-                <Select 
-                  value={form.watch("profileId") || "none"} 
-                  onValueChange={(value) => {
-                    const actualValue = value === "none" ? "" : value;
-                    form.setValue("profileId", actualValue);
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecionar perfil" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Sem perfil</SelectItem>
-                    {profiles.map((profile) => (
-                      <SelectItem key={profile.id} value={profile.id}>
-                        {profile.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
-            {!selectedUser && (
-              <div className="space-y-2">
-                <Label>Perfil</Label>
-                <div className="p-3 bg-green-50 rounded-md border border-green-200">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                    <span className="text-sm font-medium text-green-800">Instituição Financeira</span>
-                  </div>
-                  <p className="text-xs text-green-600 mt-1">
-                    ✓ Perfil atribuído automaticamente para membros da equipa interna
-                  </p>
-                </div>
-              </div>
-            )}
+            <div className="space-y-2">
+              <Label htmlFor="perfilId">Perfil</Label>
+              <Select 
+                value={form.watch("perfilId")} 
+                onValueChange={(value: string) => form.setValue("perfilId", value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecionar perfil" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Sem perfil</SelectItem>
+                  {perfis.map((perfil) => (
+                    <SelectItem key={perfil.id} value={perfil.id}>
+                      {perfil.nome}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
             <DialogFooter>
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => {
-                  setShowCreateDialog(false);
-                  setShowEditDialog(false);
-                  setSelectedUser(null);
+                  setMostrarDialogoCriar(false);
+                  setMostrarDialogoEditar(false);
+                  setUtilizadorSelecionado(null);
                   form.reset();
                 }}
               >
                 Cancelar
               </Button>
-              <Button
-                type="submit"
-                disabled={createUser.isPending || updateUser.isPending}
+              <Button 
+                type="submit" 
+                disabled={criarUtilizador.isPending || atualizarUtilizador.isPending}
                 className="bg-agri-primary hover:bg-agri-dark"
               >
-                {createUser.isPending || updateUser.isPending 
-                  ? "Guardando..." 
-                  : selectedUser ? "Atualizar" : "Criar"
+                {criarUtilizador.isPending || atualizarUtilizador.isPending 
+                  ? "A processar..." 
+                  : utilizadorSelecionado ? "Atualizar" : "Criar"
                 }
               </Button>
             </DialogFooter>

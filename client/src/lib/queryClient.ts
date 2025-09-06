@@ -13,9 +13,26 @@ async function throwIfResNotOk(res: Response) {
     // Tratamento específico para erros 401 (Unauthorized)
     if (res.status === 401) {
       console.warn('Erro 401 - Token inválido ou expirado');
-      // Remover token inválido
-      localStorage.removeItem('auth_token');
-      throw new Error('Sessão expirada. Faça login novamente.');
+      
+      // Verificar se é um erro de login (credenciais inválidas) ou sessão expirada
+      let errorMessage;
+      try {
+        const errorData = JSON.parse(text);
+        // Se a mensagem do servidor contém "Credenciais inválidas", usar essa mensagem
+        if (errorData.message && errorData.message.includes('Credenciais inválidas')) {
+          errorMessage = errorData.message;
+        } else {
+          // Para outros casos 401, assumir que é sessão expirada
+          localStorage.removeItem('auth_token');
+          errorMessage = 'Sessão expirada. Faça login novamente.';
+        }
+      } catch {
+        // Se não conseguir fazer parse do JSON, assumir sessão expirada
+        localStorage.removeItem('auth_token');
+        errorMessage = 'Sessão expirada. Faça login novamente.';
+      }
+      
+      throw new Error(errorMessage);
     }
     
     throw new Error(`${res.status}: ${text}`);

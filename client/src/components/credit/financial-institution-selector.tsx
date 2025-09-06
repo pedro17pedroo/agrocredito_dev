@@ -16,17 +16,17 @@ interface FinancialInstitution {
 
 interface CreditProgram {
   id: string;
-  name: string;
-  description: string;
-  projectTypes: string[];
-  minAmount: string;
-  maxAmount: string;
-  minTerm: number;
-  maxTerm: number;
-  interestRate: string;
-  effortRate: string;
-  processingFee: string;
-  financialInstitutionId: string;
+  nome: string;
+  descricao: string;
+  tiposProjeto: string[];
+  montanteMinimo: string;
+  montanteMaximo: string;
+  prazoMinimo: number;
+  prazoMaximo: number;
+  taxaJuro: string;
+  taxaEsforco: string;
+  taxaProcessamento: string;
+  instituicaoFinanceiraId: string;
 }
 
 interface FinancialInstitutionSelectorProps {
@@ -180,10 +180,10 @@ export default function FinancialInstitutionSelector({
                     {filteredPrograms.map((program) => (
                       <SelectItem key={program.id} value={program.id}>
                         <div className="flex flex-col items-start">
-                          <span className="font-medium">{program.name}</span>
+                          <span className="font-medium">{program.nome}</span>
                           <span className="text-xs text-gray-500">
-                            {formatKwanza(parseInt(program.minAmount))} - {formatKwanza(parseInt(program.maxAmount))} 
-                            • {program.interestRate}% ano
+                            {formatKwanza(parseInt(program.montanteMinimo))} - {formatKwanza(parseInt(program.montanteMaximo))} 
+                            • {program.taxaJuro}% ano
                           </span>
                         </div>
                       </SelectItem>
@@ -199,39 +199,39 @@ export default function FinancialInstitutionSelector({
                 
                 return (
                   <div className="p-4 bg-agri-light/10 rounded-lg space-y-3">
-                    <h4 className="font-semibold text-agri-dark">{program.name}</h4>
-                    {program.description && (
-                      <p className="text-sm text-gray-600">{program.description}</p>
+                    <h4 className="font-semibold text-agri-dark">{program.nome}</h4>
+                    {program.descricao && (
+                      <p className="text-sm text-gray-600">{program.descricao}</p>
                     )}
                     
                     <div className="grid grid-cols-2 gap-4 text-sm">
                       <div>
                         <span className="font-medium">Montante:</span>
                         <br />
-                        {formatKwanza(parseInt(program.minAmount))} - {formatKwanza(parseInt(program.maxAmount))}
+                        {formatKwanza(parseInt(program.montanteMinimo))} - {formatKwanza(parseInt(program.montanteMaximo))}
                       </div>
                       <div>
                         <span className="font-medium">Prazo:</span>
                         <br />
-                        {program.minTerm} - {program.maxTerm} meses
+                        {program.prazoMinimo} - {program.prazoMaximo} meses
                       </div>
                       <div>
                         <span className="font-medium">Taxa de Juro:</span>
                         <br />
-                        {program.interestRate}% anual
+                        {program.taxaJuro}% anual
                       </div>
                       <div>
                         <span className="font-medium">Taxa de Esforço:</span>
                         <br />
-                        Máx. {program.effortRate}%
+                        Máx. {program.taxaEsforco}%
                       </div>
                     </div>
                     
-                    {program.projectTypes.length > 0 && (
+                    {program.tiposProjeto.length > 0 && (
                       <div className="pt-2">
                         <span className="font-medium text-sm">Tipos de Projetos Suportados:</span>
                         <div className="flex flex-wrap gap-1 mt-1">
-                          {program.projectTypes.map((type) => (
+                          {program.tiposProjeto.map((type: string) => (
                             <Badge key={type} variant="outline" className="text-xs">
                               {getProjectTypeLabel(type)}
                             </Badge>

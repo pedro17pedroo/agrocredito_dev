@@ -132,13 +132,25 @@ export class CreditApplicationController {
     }
   }
 
-  static async getAll(req: Request, res: Response) {
+  static async getAll(req: any, res: Response) {
     try {
-      const applications = await CreditApplicationModel.findAll();
+      // Verificar se o usuário é admin
+      if (req.user?.userType === 'admin') {
+        const applications = await CreditApplicationModel.findAllForAdmin();
+        return res.json(applications);
+      }
+
+      // Para instituições financeiras, verificar se o ID existe
+      if (!req.user?.id) {
+        return res.status(401).json({ error: 'ID do usuário não encontrado' });
+      }
+
+      // Para instituições financeiras, usar o método existente
+      const applications = await CreditApplicationModel.findForFinancialInstitution(req.user.id);
       res.json(applications);
     } catch (error) {
-      console.error("Get all applications error:", error);
-      res.status(500).json({ message: "Erro interno do servidor" });
+      console.error('Erro ao buscar aplicações:', error);
+      res.status(500).json({ error: 'Erro interno do servidor' });
     }
   }
 
@@ -202,6 +214,11 @@ export class CreditApplicationController {
   static async getForFinancialInstitution(req: any, res: Response) {
     try {
       const user = req.user;
+      
+      if (!user?.id) {
+        return res.status(401).json({ error: 'ID do usuário não encontrado' });
+      }
+      
       let financialInstitutionId = user.id;
       
       // If user is an internal user of financial institution, use parent institution ID
@@ -213,6 +230,72 @@ export class CreditApplicationController {
       res.json(applications);
     } catch (error) {
       console.error("Get applications for financial institution error:", error);
+      res.status(500).json({ message: "Erro interno do servidor" });
+    }
+  }
+
+  static async getAllForAdmin(req: any, res: Response) {
+    try {
+      const user = req.user;
+      
+      console.log('🏛️ [API] === ENDPOINT /api/admin/credit-applications CHAMADO ===');
+       console.log('🏛️ [API] Timestamp:', new Date().toISOString());
+       console.log('🏛️ [API] User ID:', user.id);
+       console.log('🏛️ [API] User Type:', user.userType || 'N/A');
+       console.log('🏛️ [API] User Name:', user.fullName || 'N/A');
+      
+      // Verificar se o usuário é realmente um administrador
+      if (user.userType !== "admin") {
+        console.log('🏛️ [API] ❌ ACESSO NEGADO - Usuário não é admin');
+        return res.status(403).json({ message: "Acesso negado. Apenas administradores podem acessar todas as solicitações." });
+      }
+      
+      console.log('🏛️ [API] ✅ Usuário autorizado como admin, buscando dados...');
+      
+      const applications = await CreditApplicationModel.findAllForAdmin();
+      
+      console.log('🏛️ [API] === DADOS RETORNADOS DO MODEL ===');
+      console.log('🏛️ [API] Estrutura retornada:', {
+        hasNew: !!applications.new,
+        hasUnderReview: !!applications.underReview,
+        hasHistorical: !!applications.historical,
+        newCount: applications.new?.length || 0,
+        underReviewCount: applications.underReview?.length || 0,
+        historicalCount: applications.historical?.length || 0
+      });
+      
+      const totalCount = (applications.new?.length || 0) + 
+                        (applications.underReview?.length || 0) + 
+                        (applications.historical?.length || 0);
+      
+      console.log('🏛️ [API] Total de aplicações encontradas:', totalCount);
+      
+      // Log detalhado de cada categoria
+      if (applications.new && applications.new.length > 0) {
+        console.log('🏛️ [API] Aplicações NEW (pendentes):');
+        applications.new.forEach((app: any, i: number) => {
+          console.log(`🏛️ [API]   ${i+1}. ${app.projectName} - Status: ${app.status} - ID: ${app.id} - User: ${app.userFullName}`);
+        });
+      }
+      
+      if (applications.underReview && applications.underReview.length > 0) {
+        console.log('🏛️ [API] Aplicações UNDER_REVIEW (em análise):');
+        applications.underReview.forEach((app: any, i: number) => {
+          console.log(`🏛️ [API]   ${i+1}. ${app.projectName} - Status: ${app.status} - ID: ${app.id} - User: ${app.userFullName}`);
+        });
+      }
+      
+      if (applications.historical && applications.historical.length > 0) {
+        console.log('🏛️ [API] Aplicações HISTORICAL (aprovadas/rejeitadas):');
+        applications.historical.forEach((app: any, i: number) => {
+          console.log(`🏛️ [API]   ${i+1}. ${app.projectName} - Status: ${app.status} - ID: ${app.id} - User: ${app.userFullName}`);
+        });
+      }
+      
+      console.log('🏛️ [API] ✅ Enviando resposta para o cliente...');
+      res.json(applications);
+    } catch (error) {
+      console.error('🏛️ [API] ❌ ERRO no endpoint getAllForAdmin:', error instanceof Error ? error.message : 'Unknown error');
       res.status(500).json({ message: "Erro interno do servidor" });
     }
   }

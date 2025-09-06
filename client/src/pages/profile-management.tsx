@@ -20,49 +20,49 @@ import { z } from "zod";
 
 import type { Profile, Permission, User } from "@shared/schema";
 
-const profileSchema = z.object({
-  name: z.string().min(1, "Nome é obrigatório"),
-  description: z.string().optional(),
-  isActive: z.boolean().default(true),
+const esquemaPerfil = z.object({
+  nome: z.string().min(1, "Nome é obrigatório"),
+  descricao: z.string().optional(),
+  estaAtivo: z.boolean().default(true),
 });
 
-type ProfileFormData = z.infer<typeof profileSchema>;
+type DadosFormularioPerfil = z.infer<typeof esquemaPerfil>;
 
 export default function ProfileManagement() {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [selectedProfile, setSelectedProfile] = useState<Profile | null>(null);
-  const [dialogType, setDialogType] = useState<"create" | "edit" | null>(null);
+  const [perfilSelecionado, setPerfilSelecionado] = useState<Profile | null>(null);
+  const [tipoDialogo, setTipoDialogo] = useState<"create" | "edit" | null>(null);
 
-  const { data: profiles = [], isLoading: profilesLoading } = useQuery<Profile[]>({
+  const { data: perfis = [], isLoading: carregandoPerfis } = useQuery<Profile[]>({
     queryKey: ["/api/profiles"],
   });
 
-  const { data: permissions = [], isLoading: permissionsLoading } = useQuery<Permission[]>({
+  const { data: permissoes = [], isLoading: carregandoPermissoes } = useQuery<Permission[]>({
     queryKey: ["/api/permissions"],
   });
 
-  const { data: allUsers = [], isLoading: usersLoading } = useQuery<User[]>({
+  const { data: todosUtilizadores = [], isLoading: carregandoUtilizadores } = useQuery<User[]>({
     queryKey: ["/api/users"],
   });
 
-  const { data: profilePermissions = [] } = useQuery<Permission[]>({
-    queryKey: ["/api/profiles", selectedProfile?.id, "permissions"],
-    enabled: !!selectedProfile,
+  const { data: permissoesPerfil = [] } = useQuery<Permission[]>({
+    queryKey: ["/api/profiles", perfilSelecionado?.id, "permissions"],
+    enabled: !!perfilSelecionado,
   });
 
-  const form = useForm<ProfileFormData>({
-    resolver: zodResolver(profileSchema),
+  const form = useForm<DadosFormularioPerfil>({
+    resolver: zodResolver(esquemaPerfil),
     defaultValues: {
-      name: "",
-      description: "",
-      isActive: true,
+      nome: "",
+      descricao: "",
+      estaAtivo: true,
     },
   });
 
-  const createProfileMutation = useMutation({
-    mutationFn: async (data: ProfileFormData) => {
+  const criarPerfilMutation = useMutation({
+    mutationFn: async (data: DadosFormularioPerfil) => {
       const response = await fetch("/api/profiles", {
         method: "POST",
         headers: {
@@ -80,7 +80,7 @@ export default function ProfileManagement() {
         title: "Perfil criado",
         description: "O perfil foi criado com sucesso.",
       });
-      setDialogType(null);
+      setTipoDialogo(null);
       form.reset();
     },
     onError: (error) => {
@@ -92,8 +92,8 @@ export default function ProfileManagement() {
     },
   });
 
-  const updateProfileMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: Partial<ProfileFormData> }) => {
+  const atualizarPerfilMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: Partial<DadosFormularioPerfil> }) => {
       const response = await fetch(`/api/profiles/${id}`, {
         method: "PUT",
         headers: {
@@ -111,12 +111,12 @@ export default function ProfileManagement() {
         title: "Perfil actualizado",
         description: "O perfil foi actualizado com sucesso.",
       });
-      setDialogType(null);
+      setTipoDialogo(null);
       form.reset();
     },
   });
 
-  const deleteProfileMutation = useMutation({
+  const eliminarPerfilMutation = useMutation({
     mutationFn: async (id: string) => {
       const response = await fetch(`/api/profiles/${id}`, {
         method: "DELETE",
@@ -136,7 +136,7 @@ export default function ProfileManagement() {
     },
   });
 
-  const updatePermissionsMutation = useMutation({
+  const atualizarPermissoesMutation = useMutation({
     mutationFn: async ({ profileId, permissionId, action }: { profileId: string; permissionId: string; action: "add" | "remove" }) => {
       if (action === "add") {
         const response = await fetch(`/api/profiles/${profileId}/permissions`, {
@@ -161,7 +161,7 @@ export default function ProfileManagement() {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/profiles", selectedProfile?.id, "permissions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/profiles", perfilSelecionado?.id, "permissions"] });
       toast({
         title: "Permissões actualizadas",
         description: "As permissões do perfil foram actualizadas.",
@@ -169,7 +169,7 @@ export default function ProfileManagement() {
     },
   });
 
-  const assignProfileMutation = useMutation({
+  const atribuirPerfilMutation = useMutation({
     mutationFn: async ({ userId, profileId }: { userId: string; profileId: string }) => {
       const response = await fetch(`/api/users/${userId}/profile`, {
         method: "PUT",
@@ -191,27 +191,27 @@ export default function ProfileManagement() {
     },
   });
 
-  const handleCreateProfile = (data: ProfileFormData) => {
-    createProfileMutation.mutate(data);
+  const lidarComCriarPerfil = (data: DadosFormularioPerfil) => {
+    criarPerfilMutation.mutate(data);
   };
 
-  const handleEditProfile = (profile: Profile) => {
-    setSelectedProfile(profile);
-    setDialogType("edit");
+  const lidarComEditarPerfil = (profile: Profile) => {
+    setPerfilSelecionado(profile);
+    setTipoDialogo("edit");
     form.reset({
-      name: profile.name,
-      description: profile.description || "",
-      isActive: profile.isActive ?? true,
+      nome: profile.name,
+      descricao: profile.description || "",
+      estaAtivo: profile.isActive ?? true,
     });
   };
 
-  const handleUpdateProfile = (data: ProfileFormData) => {
-    if (selectedProfile) {
-      updateProfileMutation.mutate({ id: selectedProfile.id, data });
+  const lidarComAtualizarPerfil = (data: DadosFormularioPerfil) => {
+    if (perfilSelecionado) {
+      atualizarPerfilMutation.mutate({ id: perfilSelecionado.id, data });
     }
   };
 
-  const handleDeleteProfile = (profile: Profile) => {
+  const lidarComEliminarPerfil = (profile: Profile) => {
     if (profile.isSystem) {
       toast({
         title: "Ação não permitida",
@@ -222,26 +222,26 @@ export default function ProfileManagement() {
     }
     
     if (confirm(`Tem a certeza que deseja eliminar o perfil "${profile.name}"?`)) {
-      deleteProfileMutation.mutate(profile.id);
+      eliminarPerfilMutation.mutate(profile.id);
     }
   };
 
-  const handlePermissionToggle = (permission: Permission, isChecked: boolean) => {
-    if (!selectedProfile) return;
+  const lidarComAlternarPermissao = (permission: Permission, isChecked: boolean) => {
+    if (!perfilSelecionado) return;
     
-    updatePermissionsMutation.mutate({
-      profileId: selectedProfile.id,
+    atualizarPermissoesMutation.mutate({
+      profileId: perfilSelecionado.id,
       permissionId: permission.id,
       action: isChecked ? "add" : "remove",
     });
   };
 
-  const isPermissionAssigned = (permission: Permission) => {
-    return profilePermissions.some(p => p.id === permission.id);
+  const estaPermissaoAtribuida = (permission: Permission) => {
+    return permissoesPerfil.some(p => p.id === permission.id);
   };
 
-  const getPermissionsByModule = () => {
-    const modules = permissions.reduce((acc, permission) => {
+  const obterPermissoesPorModulo = () => {
+    const modules = permissoes.reduce((acc: Record<string, Permission[]>, permission: Permission) => {
       if (!acc[permission.module]) {
         acc[permission.module] = [];
       }
@@ -252,7 +252,7 @@ export default function ProfileManagement() {
     return modules;
   };
 
-  const isLoading = profilesLoading || permissionsLoading || usersLoading;
+  const estaCarregando = carregandoPerfis || carregandoPermissoes || carregandoUtilizadores;
 
   if (!user || user.userType !== "admin") {
     return (
@@ -276,10 +276,10 @@ export default function ProfileManagement() {
               <h1 className="text-2xl font-bold">Gestão de Perfis e Permissões</h1>
               <p className="text-agri-secondary">Configure o acesso ao sistema para diferentes tipos de utilizadores</p>
             </div>
-            <Dialog open={dialogType === "create"} onOpenChange={(open) => !open && setDialogType(null)}>
+            <Dialog open={tipoDialogo === "create"} onOpenChange={(open) => !open && setTipoDialogo(null)}>
               <DialogTrigger asChild>
                 <Button
-                  onClick={() => setDialogType("create")}
+                  onClick={() => setTipoDialogo("create")}
                   className="bg-agri-dark hover:bg-opacity-80"
                 >
                   <Plus className="w-4 h-4 mr-2" />
@@ -290,48 +290,48 @@ export default function ProfileManagement() {
                 <DialogHeader>
                   <DialogTitle>Criar Novo Perfil</DialogTitle>
                 </DialogHeader>
-                <form onSubmit={form.handleSubmit(handleCreateProfile)} className="space-y-4">
+                <form onSubmit={form.handleSubmit(lidarComCriarPerfil)} className="space-y-4">
                   <div>
                     <Label htmlFor="name">Nome do Perfil</Label>
                     <Input
-                      id="name"
-                      {...form.register("name")}
+                      id="nome"
+                      {...form.register("nome")}
                       placeholder="Ex: Gestor Regional"
                     />
-                    {form.formState.errors.name && (
-                      <p className="text-sm text-red-500 mt-1">{form.formState.errors.name.message}</p>
+                    {form.formState.errors.nome && (
+                      <p className="text-sm text-red-500 mt-1">{form.formState.errors.nome.message}</p>
                     )}
                   </div>
                   <div>
                     <Label htmlFor="description">Descrição</Label>
                     <Textarea
-                      id="description"
-                      {...form.register("description")}
+                      id="descricao"
+                      {...form.register("descricao")}
                       placeholder="Descreva as responsabilidades deste perfil..."
                     />
                   </div>
                   <div className="flex items-center space-x-2">
                     <Switch
-                      id="isActive"
-                      checked={form.watch("isActive")}
-                      onCheckedChange={(checked) => form.setValue("isActive", checked)}
+                      id="estaAtivo"
+                      checked={form.watch("estaAtivo")}
+                      onCheckedChange={(checked) => form.setValue("estaAtivo", checked)}
                     />
-                    <Label htmlFor="isActive">Perfil activo</Label>
+                    <Label htmlFor="estaAtivo">Perfil activo</Label>
                   </div>
                   <DialogFooter>
                     <Button
                       type="button"
                       variant="outline"
-                      onClick={() => setDialogType(null)}
+                      onClick={() => setTipoDialogo(null)}
                     >
                       Cancelar
                     </Button>
                     <Button
                       type="submit"
-                      disabled={createProfileMutation.isPending}
+                      disabled={criarPerfilMutation.isPending}
                       className="bg-agri-primary hover:bg-agri-dark"
                     >
-                      {createProfileMutation.isPending ? "A criar..." : "Criar Perfil"}
+                      {criarPerfilMutation.isPending ? "A criar..." : "Criar Perfil"}
                     </Button>
                   </DialogFooter>
                 </form>
@@ -342,7 +342,7 @@ export default function ProfileManagement() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {isLoading ? (
+        {estaCarregando ? (
           <div className="text-center py-12">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-agri-primary mx-auto mb-4"></div>
             <p className="text-gray-600">A carregar dados...</p>
@@ -366,15 +366,15 @@ export default function ProfileManagement() {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
-                      {profiles.map((profile) => (
+                      {perfis.map((profile) => (
                         <div
                           key={profile.id}
                           className={`p-4 border rounded-lg cursor-pointer transition-colors ${
-                            selectedProfile?.id === profile.id
+                            perfilSelecionado?.id === profile.id
                               ? "border-agri-primary bg-agri-primary/5"
                               : "border-gray-200 hover:border-gray-300"
                           }`}
-                          onClick={() => setSelectedProfile(profile)}
+                          onClick={() => setPerfilSelecionado(profile)}
                         >
                           <div className="flex items-center justify-between">
                             <div>
@@ -395,7 +395,7 @@ export default function ProfileManagement() {
                                 variant="outline"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  handleEditProfile(profile);
+                                  lidarComEditarPerfil(profile);
                                 }}
                               >
                                 <Edit2 className="w-4 h-4" />
@@ -406,7 +406,7 @@ export default function ProfileManagement() {
                                   variant="outline"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    handleDeleteProfile(profile);
+                                    lidarComEliminarPerfil(profile);
                                   }}
                                 >
                                   <Trash2 className="w-4 h-4" />
@@ -426,22 +426,22 @@ export default function ProfileManagement() {
                     <CardTitle className="flex items-center">
                       <Settings className="w-5 h-5 mr-2" />
                       Permissões
-                      {selectedProfile && (
+                      {perfilSelecionado && (
                         <span className="ml-2 text-sm font-normal text-gray-600">
-                          - {selectedProfile.name}
+                          - {perfilSelecionado.name}
                         </span>
                       )}
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    {!selectedProfile ? (
+                    {!perfilSelecionado ? (
                       <div className="text-center py-8">
                         <Shield className="mx-auto h-12 w-12 text-gray-400 mb-4" />
                         <p className="text-gray-600">Selecione um perfil para gerir as suas permissões</p>
                       </div>
                     ) : (
                       <div className="space-y-6">
-                        {Object.entries(getPermissionsByModule()).map(([module, modulePermissions]) => (
+                        {Object.entries(obterPermissoesPorModulo()).map(([module, modulePermissions]) => (
                           <div key={module}>
                             <h4 className="font-semibold text-agri-dark mb-3 capitalize">
                               {module === "applications" ? "Solicitações" :
@@ -457,11 +457,11 @@ export default function ProfileManagement() {
                                 <div key={permission.id} className="flex items-center space-x-3">
                                   <Checkbox
                                     id={permission.id}
-                                    checked={isPermissionAssigned(permission)}
+                                    checked={estaPermissaoAtribuida(permission)}
                                     onCheckedChange={(checked) => 
-                                      handlePermissionToggle(permission, Boolean(checked))
+                                      lidarComAlternarPermissao(permission, Boolean(checked))
                                     }
-                                    disabled={updatePermissionsMutation.isPending}
+                                    disabled={atualizarPermissoesMutation.isPending}
                                   />
                                   <div className="flex-1">
                                     <Label htmlFor={permission.id} className="text-sm font-medium">
@@ -491,7 +491,7 @@ export default function ProfileManagement() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {allUsers.map((u) => (
+                    {todosUtilizadores.map((u) => (
                       <div key={u.id} className="flex items-center justify-between p-4 border rounded-lg">
                         <div>
                           <h3 className="font-semibold">{u.fullName}</h3>
@@ -502,14 +502,14 @@ export default function ProfileManagement() {
                         </div>
                         <div className="flex items-center space-x-4">
                           <span className="text-sm text-gray-600">
-                            Perfil: {profiles.find(p => p.id === u.profileId)?.name || "Nenhum"}
+                            Perfil: {perfis.find(p => p.id === u.profileId)?.name || "Nenhum"}
                           </span>
                           <select
                             className="px-3 py-1 border rounded"
                             value={u.profileId || ""}
                             onChange={(e) => {
                               if (e.target.value) {
-                                assignProfileMutation.mutate({
+                                atribuirPerfilMutation.mutate({
                                   userId: u.id,
                                   profileId: e.target.value,
                                 });
@@ -517,7 +517,7 @@ export default function ProfileManagement() {
                             }}
                           >
                             <option value="">Selecionar perfil</option>
-                            {profiles.filter(p => p.isActive).map((profile) => (
+                            {perfis.filter(p => p.isActive).map((profile) => (
                               <option key={profile.id} value={profile.id}>
                                 {profile.name}
                               </option>
@@ -534,50 +534,50 @@ export default function ProfileManagement() {
         )}
 
         {/* Edit Profile Dialog */}
-        <Dialog open={dialogType === "edit"} onOpenChange={(open) => !open && setDialogType(null)}>
+        <Dialog open={tipoDialogo === "edit"} onOpenChange={(open) => !open && setTipoDialogo(null)}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Editar Perfil</DialogTitle>
             </DialogHeader>
-            <form onSubmit={form.handleSubmit(handleUpdateProfile)} className="space-y-4">
+            <form onSubmit={form.handleSubmit(lidarComAtualizarPerfil)} className="space-y-4">
               <div>
                 <Label htmlFor="edit-name">Nome do Perfil</Label>
                 <Input
-                  id="edit-name"
-                  {...form.register("name")}
+                  id="edit-nome"
+                  {...form.register("nome")}
                   placeholder="Ex: Gestor Regional"
                 />
               </div>
               <div>
                 <Label htmlFor="edit-description">Descrição</Label>
                 <Textarea
-                  id="edit-description"
-                  {...form.register("description")}
+                  id="edit-descricao"
+                  {...form.register("descricao")}
                   placeholder="Descreva as responsabilidades deste perfil..."
                 />
               </div>
               <div className="flex items-center space-x-2">
                 <Switch
-                  id="edit-isActive"
-                  checked={form.watch("isActive")}
-                  onCheckedChange={(checked) => form.setValue("isActive", checked)}
+                  id="edit-estaAtivo"
+                  checked={form.watch("estaAtivo")}
+                  onCheckedChange={(checked) => form.setValue("estaAtivo", checked)}
                 />
-                <Label htmlFor="edit-isActive">Perfil activo</Label>
+                <Label htmlFor="edit-estaAtivo">Perfil activo</Label>
               </div>
               <DialogFooter>
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => setDialogType(null)}
+                  onClick={() => setTipoDialogo(null)}
                 >
                   Cancelar
                 </Button>
                 <Button
                   type="submit"
-                  disabled={updateProfileMutation.isPending}
+                  disabled={atualizarPerfilMutation.isPending}
                   className="bg-agri-primary hover:bg-agri-dark"
                 >
-                  {updateProfileMutation.isPending ? "A actualizar..." : "Actualizar"}
+                  {atualizarPerfilMutation.isPending ? "A actualizar..." : "Actualizar"}
                 </Button>
               </DialogFooter>
             </form>
